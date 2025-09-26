@@ -1,197 +1,144 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dashboard — PIZZ’AMIGO</title>
-  <style>
-    :root{
-      --bg:#0b0f14;
-      --panel:#111826;
-      --line:#223049;
-      --text:#e8eefb;
-      --muted:#b8c1d9;
-      --green:#19c37d;
-      --blue:#2d6cdf;
-      --red:#ef5350;
-      --chip:#0d1c33;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Arial}
-    .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
-    h1{font-size:22px;margin:8px 0 14px}
-    .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-    input[type=text]{background:#0c1422;border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:8px;min-width:320px}
-    .btn{border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
-    .btn.primary{background:var(--green);color:#000}
-    .btn.blue{background:var(--blue);color:#fff}
-    .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--muted)}
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
-    .meta{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px}
-    .small{color:var(--muted);font-size:13px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
-    th{font-weight:600;text-align:left}
-    .money{white-space:nowrap}
-    .status{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--line)}
-    .status.new{background:#0d3a23;color:#9bffcf}
-    .status.done{background:#2a2a2a;color:#cfcfcf}
-    .empty{color:var(--muted);text-align:center;padding:16px 8px}
-    .err{color:#ff8a8a;margin:6px 0}
-    .right{display:flex;gap:6px;align-items:center}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard — PIZZ’AMIGO</title>
+<style>
+  :root{--bg:#0d1117;--panel:#0f1623;--line:#243551;--text:#e6edf3;--muted:#9fb0c7;--green:#22c55e;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  input[type=text]{width:100%;background:#0b1320;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .btn{border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
+  .btn.primary{background:var(--green);color:#05220f}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  th{color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:12px}
+  .small{color:var(--muted)}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Dashboard — PIZZ’AMIGO</h1>
+<div class="wrap">
+  <h1>Dashboard — PIZZ’AMIGO</h1>
 
-    <div class="bar">
-      <span class="chip">API :</span>
-      <input id="api" type="text" spellcheck="false" />
-      <span class="chip">Clé admin (facultatif) :</span>
-      <input id="key" type="text" spellcheck="false" placeholder="ex: PIZZAMIGO-ADMIN-123" />
-      <button id="save" class="btn blue">Enregistrer</button>
-      <button id="refresh" class="btn primary">Actualiser</button>
+  <div class="card" style="margin-bottom:12px">
+    <div class="row">
+      <label class="small">API :</label>
+      <input id="api" type="text" value="https://script.google.com/macros/s/AKfycbyBuj8uM-5Kpz4TH13xGuz12OoxTSj-J2CNugOuD_dJQcA0Tej-4UrCpNDLSNnHcb1z/exec" />
+      <label class="small">Clé admin (facultatif) :</label>
+      <input id="key" type="text" placeholder="ex: PIZZAMIGO-ADMIN-123" />
+      <button class="btn primary" id="save">Enregistrer</button>
+      <button class="btn" id="refresh">Actualiser</button>
+      <button class="btn" id="demo">➕ Demo</button>
     </div>
-
-    <div id="error" class="err"></div>
-
-    <div class="panel">
-      <div class="meta">
-        <div class="small">Journal du jour</div>
-        <div class="small">Dernière mise à jour — <span id="last">—</span></div>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Heure</th>
-            <th>ID</th>
-            <th>Client</th>
-            <th>Téléphone</th>
-            <th>Horaire</th>
-            <th>Pizzas</th>
-            <th class="money">Total</th>
-            <th>Statut</th>
-          </tr>
-        </thead>
-        <tbody id="rows">
-          <tr><td class="empty" colspan="8">Aucune commande pour le moment.</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <div class="small">Dernière mise à jour — <span id="last">—</span> &nbsp;|&nbsp; <span id="status" class="small"></span></div>
   </div>
 
-  <script>
-    // =========== CONFIG ===========
-    // Mets ici par défaut TON exec Apps Script :
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwMKkb97Arl30hFuibCW8IRikIZp61X5jLhzPW8UlcGJrJvPmQBCk8LU3qK1uFdc5QzHg/exec";
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th>
+          <th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="8" class="small">Aucune commande pour le moment.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-    // Clé optionnelle si ton script la vérifie (sinon laisse vide)
-    const DEFAULT_ADMIN_KEY = "";
+<script>
+const EL = id => document.getElementById(id);
+const LS = {
+  get k(){ return localStorage.getItem('pizz_api_key') || ''; },
+  set k(v){ localStorage.setItem('pizz_api_key', v||''); },
+  get u(){ return localStorage.getItem('pizz_api_url') || ''; },
+  set u(v){ localStorage.setItem('pizz_api_url', v||''); }
+};
 
-    // =========== STATE ===========
-    const elApi   = document.getElementById('api');
-    const elKey   = document.getElementById('key');
-    const elSave  = document.getElementById('save');
-    const elRef   = document.getElementById('refresh');
-    const elRows  = document.getElementById('rows');
-    const elLast  = document.getElementById('last');
-    const elErr   = document.getElementById('error');
+if (!LS.u) LS.u = EL('api').value;
+EL('api').value = LS.u;
+EL('key').value = LS.k;
 
-    // Stockage local pour éviter de re-saisir
-    const store = {
-      get api(){ return localStorage.getItem('pizz_api') || DEFAULT_API_URL; },
-      set api(v){ localStorage.setItem('pizz_api', v); },
-      get key(){ return localStorage.getItem('pizz_key') || DEFAULT_ADMIN_KEY; },
-      set key(v){ localStorage.setItem('pizz_key', v); },
-    };
+EL('save').onclick = () => { LS.u = EL('api').value.trim(); LS.k = EL('key').value.trim(); tick(); };
 
-    elApi.value = store.api;
-    elKey.value = store.key;
+// JSONP loader (évite CORS)
+function loadJSONP(url, cbName, onerror){
+  const s = document.createElement('script');
+  s.src = url + (url.includes('?')?'&':'?') + 'callback=' + cbName;
+  s.onerror = () => { s.remove(); onerror && onerror(); };
+  document.body.appendChild(s);
+}
 
-    // Petit bip pour nouvelles commandes
-    const TONE = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAACABAAZGF0YQAAAAA=");
+function render(orders){
+  const tbody = EL('rows');
+  tbody.innerHTML = '';
+  if (!orders || !orders.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="8" class="small">Aucune commande pour le moment.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  orders.forEach(o=>{
+    const pizzas = (o.items||[]).map(i=>`${i.name} × ${i.qty}`).join('<br>');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${o.when||'-'}</td>
+      <td class="small">${o.id||'-'}</td>
+      <td>${o.name||'-'}</td>
+      <td>${o.phone||'-'}</td>
+      <td>${o.slot||'-'}</td>
+      <td>${pizzas||'-'}</td>
+      <td>${(o.total??0).toFixed(2)} €</td>
+      <td>${o.status||'new'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
 
-    let lastSeen = new Set();
-    let timer = null;
+function tick(){
+  const API = (EL('api').value || LS.u).trim();
+  const KEY = (EL('key').value || LS.k).trim();
+  if (!API) return;
 
-    function fmtTime(s){
-      try { return new Date(s).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
-      catch(e){ return s || '-'; }
-    }
+  const cb = 'onOrders_' + Math.random().toString(36).slice(2);
+  window[cb] = (data) => {
+    delete window[cb];
+    EL('last').textContent = new Date().toLocaleTimeString('fr-FR');
+    if (!data || !data.ok) { EL('status').textContent = 'Erreur API'; return; }
+    EL('status').textContent = (data.orders||[]).length + ' commande(s)';
+    render(data.orders||[]);
+  };
 
-    function money(v){
-      v = Number(v||0);
-      return v.toFixed(2).replace('.', ',') + ' €';
-    }
+  let url = API + '?list=1';
+  if (KEY) url += '&key=' + encodeURIComponent(KEY);
 
-    async function fetchOrders(){
-      const base = (elApi.value||'').trim();
-      if(!base){ throw new Error("API manquante"); }
-      const url = base + "?list=1" + (elKey.value ? "&key="+encodeURIComponent(elKey.value) : "");
-      const res = await fetch(url, {cache:'no-store'});
-      const txt = await res.text();
-      let data;
-      try { data = JSON.parse(txt); } catch(_) { data = {ok:false, error:'bad_json', raw:txt}; }
-      if(!res.ok || !data.ok){ throw new Error(data.error || ('HTTP '+res.status)); }
-      return data.orders || [];
-    }
+  loadJSONP(url, cb, () => { EL('status').textContent = 'Erreur réseau'; });
+}
 
-    function render(orders){
-      elRows.innerHTML = '';
-      let ping = false;
-      for(const o of orders){ if(!lastSeen.has(o.id)) ping = true; }
-      if(ping){ try{ TONE.play(); }catch(e){} }
+EL('refresh').onclick = tick;
 
-      if(!orders.length){
-        elRows.innerHTML = `<tr><td class="empty" colspan="8">Aucune commande pour le moment.</td></tr>`;
-      }else{
-        orders.forEach(o=>{
-          lastSeen.add(o.id);
-          const pizzas = (o.items||[]).map(i=>`${i.name} × ${i.qty}`).join('<br>');
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${fmtTime(o.when)}</td>
-            <td class="small">${o.id||'-'}</td>
-            <td>${o.name||'-'}</td>
-            <td>${o.phone||'-'}</td>
-            <td>${o.slot||'-'}</td>
-            <td>${pizzas||'-'}</td>
-            <td class="money">${money(o.total)}</td>
-            <td><span class="status ${o.status==='done'?'done':'new'}">${o.status||'nouvelle'}</span></td>`;
-          elRows.appendChild(tr);
-        });
-      }
-      elLast.textContent = new Date().toLocaleTimeString('fr-FR');
-    }
+// bouton DEMO : insère une commande factice (aucun CORS : JSONP)
+EL('demo').onclick = () => {
+  const API = (EL('api').value || LS.u).trim();
+  const KEY = (EL('key').value || LS.k).trim();
+  if (!API) return;
+  const cb = 'onDemo_' + Math.random().toString(36).slice(2);
+  window[cb] = (data) => {
+    delete window[cb];
+    if (data && data.ok) { EL('status').textContent = 'Test créé : ' + data.inserted; setTimeout(tick, 700); }
+    else { EL('status').textContent = 'Échec test'; }
+  };
+  let url = API + '?demo=1';
+  if (KEY) url += '&key=' + encodeURIComponent(KEY);
+  loadJSONP(url, cb, () => EL('status').textContent = 'Échec test réseau');
+};
 
-    async function load(){
-      elErr.textContent = '';
-      try{
-        const orders = await fetchOrders();
-        render(orders);
-      }catch(err){
-        console.error(err);
-        elErr.textContent = "Erreur de chargement : " + err.message + " (vérifie l’URL Apps Script et la publication en tant qu’Application web).";
-      }
-    }
-
-    function loop(){
-      clearTimeout(timer);
-      load().finally(()=> timer = setTimeout(loop, 5000));
-    }
-
-    elSave.addEventListener('click', ()=>{
-      store.api = elApi.value.trim();
-      store.key = elKey.value.trim();
-      lastSeen = new Set();
-      loop();
-    });
-
-    elRef.addEventListener('click', ()=> load());
-
-    // Démarrage
-    loop();
-  </script>
+setInterval(tick, 5000);
+tick();
+</script>
 </body>
 </html>
