@@ -1,141 +1,197 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard — PIZZ’AMIGO</title>
-<style>
-  :root{
-    --bg:#0b0f14; --panel:#121a2b; --line:#25335a;
-    --text:#e6eefc; --muted:#b7c2d9; --accent:#19c37d; --warn:#ffae42;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
-  h1{margin:0 0 14px;font-size:26px;letter-spacing:.3px}
-  .bar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:8px 0 16px}
-  .pill{background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:10px;display:flex;gap:12px;align-items:center}
-  .small{color:var(--muted);font-size:13px}
-  .btn{cursor:pointer;border:0;border-radius:10px;padding:8px 12px;background:var(--accent);color:#001c0f;font-weight:600}
-  .btn:active{transform:translateY(1px)}
-  .tbl{width:100%;border-collapse:collapse;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
-  .tbl th,.tbl td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
-  .tbl th{color:#9fb0d0;text-align:left;font-weight:600;background:rgba(255,255,255,.02)}
-  .tbl tr:last-child td{border-bottom:0}
-  .status{display:inline-block;border:1px solid var(--line);padding:3px 8px;border-radius:9999px;font-size:12px}
-  .status.new{background:#103b27;color:#b7ffd9}
-  .money{white-space:nowrap;font-variant-numeric:tabular-nums}
-  .empty{padding:18px;color:var(--muted);text-align:center}
-  input[type="text"]{background:#0e1524;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 8px}
-  @media (max-width:720px){
-    .hide-sm{display:none}
-    .tbl td, .tbl th{padding:8px}
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — PIZZ’AMIGO</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#111826;
+      --line:#223049;
+      --text:#e8eefb;
+      --muted:#b8c1d9;
+      --green:#19c37d;
+      --blue:#2d6cdf;
+      --red:#ef5350;
+      --chip:#0d1c33;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Arial}
+    .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+    h1{font-size:22px;margin:8px 0 14px}
+    .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    input[type=text]{background:#0c1422;border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:8px;min-width:320px}
+    .btn{border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
+    .btn.primary{background:var(--green);color:#000}
+    .btn.blue{background:var(--blue);color:#fff}
+    .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--muted)}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+    .meta{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px}
+    .small{color:var(--muted);font-size:13px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
+    th{font-weight:600;text-align:left}
+    .money{white-space:nowrap}
+    .status{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--line)}
+    .status.new{background:#0d3a23;color:#9bffcf}
+    .status.done{background:#2a2a2a;color:#cfcfcf}
+    .empty{color:var(--muted);text-align:center;padding:16px 8px}
+    .err{color:#ff8a8a;margin:6px 0}
+    .right{display:flex;gap:6px;align-items:center}
+  </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Dashboard — PIZZ’AMIGO</h1>
 
     <div class="bar">
-      <div class="pill">
-        <div class="small">API :</div>
-        <div id="api" class="small" style="font-family:ui-monospace,Menlo,Consolas">—</div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <label class="small" title="Optionnel — seulement si l'API en exige une">Clé admin :
-          <input id="adm" type="text" placeholder="(facultatif)" style="width:170px;margin-left:6px">
-        </label>
-        <button id="refresh" class="btn">Actualiser</button>
-      </div>
+      <span class="chip">API :</span>
+      <input id="api" type="text" spellcheck="false" />
+      <span class="chip">Clé admin (facultatif) :</span>
+      <input id="key" type="text" spellcheck="false" placeholder="ex: PIZZAMIGO-ADMIN-123" />
+      <button id="save" class="btn blue">Enregistrer</button>
+      <button id="refresh" class="btn primary">Actualiser</button>
     </div>
 
-    <div class="pill small" id="msg">Prêt.</div>
+    <div id="error" class="err"></div>
 
-    <table class="tbl" id="grid">
-      <thead>
-        <tr>
-          <th>Heure</th>
-          <th class="hide-sm">ID</th>
-          <th>Client</th>
-          <th class="hide-sm">Téléphone</th>
-          <th>Horaire</th>
-          <th>Pizzas</th>
-          <th>Total</th>
-          <th>Statut</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="8" class="empty">Aucune commande pour le moment.</td></tr>
-      </tbody>
-    </table>
+    <div class="panel">
+      <div class="meta">
+        <div class="small">Journal du jour</div>
+        <div class="small">Dernière mise à jour — <span id="last">—</span></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Heure</th>
+            <th>ID</th>
+            <th>Client</th>
+            <th>Téléphone</th>
+            <th>Horaire</th>
+            <th>Pizzas</th>
+            <th class="money">Total</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td class="empty" colspan="8">Aucune commande pour le moment.</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-<script>
-/*** CONFIG — mets uniquement ton URL ici ***/
-const API_URL = "https://script.google.com/macros/s/AKfycbyWVDdvwtBQ-80d1obtwnEEkn--bf8gQLB6pGXzZS9hjR4n0SMSVSRGKJgyqVoP8d0/exec";
-/*** fin config ***/
+  <script>
+    // =========== CONFIG ===========
+    // Mets ici par défaut TON exec Apps Script :
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwMKkb97Arl30hFuibCW8IRikIZp61X5jLhzPW8UlcGJrJvPmQBCk8LU3qK1uFdc5QzHg/exec";
 
-document.getElementById('api').textContent = API_URL;
+    // Clé optionnelle si ton script la vérifie (sinon laisse vide)
+    const DEFAULT_ADMIN_KEY = "";
 
-const BEEP = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAACABAAZGF0YQAAAAA="); // clic bref
-let seen = new Set();
+    // =========== STATE ===========
+    const elApi   = document.getElementById('api');
+    const elKey   = document.getElementById('key');
+    const elSave  = document.getElementById('save');
+    const elRef   = document.getElementById('refresh');
+    const elRows  = document.getElementById('rows');
+    const elLast  = document.getElementById('last');
+    const elErr   = document.getElementById('error');
 
-function fmtTime(s){
-  try{ return new Date(s.replace(" ","T")).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
-  catch(e){ return s; }
-}
-function euro(n){
-  return (Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
-}
-function line(o){
-  const tr = document.createElement('tr');
-  const pizzas = (o.items||[]).map(i => `${i.name} × ${i.qty}`).join("<br>");
-  tr.innerHTML = `
-    <td>${fmtTime(o.when||"")}</td>
-    <td class="hide-sm small">${o.id||""}</td>
-    <td>${escapeHTML(o.name||"")}</td>
-    <td class="hide-sm">${escapeHTML(o.phone||"")}</td>
-    <td>${escapeHTML(o.slot||"")}</td>
-    <td>${pizzas||"-"}</td>
-    <td class="money">${euro(o.total)}</td>
-    <td><span class="status new">nouvelle</span></td>
-  `;
-  return tr;
-}
-function escapeHTML(s){return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+    // Stockage local pour éviter de re-saisir
+    const store = {
+      get api(){ return localStorage.getItem('pizz_api') || DEFAULT_API_URL; },
+      set api(v){ localStorage.setItem('pizz_api', v); },
+      get key(){ return localStorage.getItem('pizz_key') || DEFAULT_ADMIN_KEY; },
+      set key(v){ localStorage.setItem('pizz_key', v); },
+    };
 
-async function fetchOrders(){
-  const key = (document.getElementById('adm').value||"").trim();
-  const url = API_URL + "?list=1" + (key?("&key="+encodeURIComponent(key)):"");
-  const t0 = Date.now();
-  const res = await fetch(url, {cache:'no-store'});
-  const txt = await res.text();
-  let data; try{ data = JSON.parse(txt) } catch { data = { ok:false, error:"bad_json", raw:txt } }
-  if(!data.ok) throw new Error(data.error||("HTTP "+res.status));
-  const took = Date.now()-t0;
-  document.getElementById('msg').textContent = `Chargé ${data.orders.length} commande(s) • ${took} ms • ${new Date().toLocaleTimeString('fr-FR')}`;
-  return data.orders;
-}
+    elApi.value = store.api;
+    elKey.value = store.key;
 
-function render(orders){
-  const tb = document.getElementById('rows');
-  tb.innerHTML = "";
-  let ping = false;
-  for (const o of orders) if(!seen.has(o.id)) ping = true;
-  if (ping) { try{BEEP.play()}catch{} }
-  orders.forEach(o=>{ seen.add(o.id); tb.appendChild(line(o)); });
-  if (!orders.length){
-    tb.innerHTML = `<tr><td colspan="8" class="empty">Aucune commande pour le moment.</td></tr>`;
-  }
-}
+    // Petit bip pour nouvelles commandes
+    const TONE = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAACABAAZGF0YQAAAAA=");
 
-async function refresh(){ try{ render(await fetchOrders()) } catch(e){ document.getElementById('msg').textContent = "Erreur : "+e.message } }
-let loopTimer = null;
-function loop(){ clearTimeout(loopTimer); refresh().finally(()=>{ loopTimer = setTimeout(loop, 5000); }); }
+    let lastSeen = new Set();
+    let timer = null;
 
-document.getElementById('refresh').addEventListener('click', refresh);
-window.addEventListener('DOMContentLoaded', loop);
-</script>
+    function fmtTime(s){
+      try { return new Date(s).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+      catch(e){ return s || '-'; }
+    }
+
+    function money(v){
+      v = Number(v||0);
+      return v.toFixed(2).replace('.', ',') + ' €';
+    }
+
+    async function fetchOrders(){
+      const base = (elApi.value||'').trim();
+      if(!base){ throw new Error("API manquante"); }
+      const url = base + "?list=1" + (elKey.value ? "&key="+encodeURIComponent(elKey.value) : "");
+      const res = await fetch(url, {cache:'no-store'});
+      const txt = await res.text();
+      let data;
+      try { data = JSON.parse(txt); } catch(_) { data = {ok:false, error:'bad_json', raw:txt}; }
+      if(!res.ok || !data.ok){ throw new Error(data.error || ('HTTP '+res.status)); }
+      return data.orders || [];
+    }
+
+    function render(orders){
+      elRows.innerHTML = '';
+      let ping = false;
+      for(const o of orders){ if(!lastSeen.has(o.id)) ping = true; }
+      if(ping){ try{ TONE.play(); }catch(e){} }
+
+      if(!orders.length){
+        elRows.innerHTML = `<tr><td class="empty" colspan="8">Aucune commande pour le moment.</td></tr>`;
+      }else{
+        orders.forEach(o=>{
+          lastSeen.add(o.id);
+          const pizzas = (o.items||[]).map(i=>`${i.name} × ${i.qty}`).join('<br>');
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${fmtTime(o.when)}</td>
+            <td class="small">${o.id||'-'}</td>
+            <td>${o.name||'-'}</td>
+            <td>${o.phone||'-'}</td>
+            <td>${o.slot||'-'}</td>
+            <td>${pizzas||'-'}</td>
+            <td class="money">${money(o.total)}</td>
+            <td><span class="status ${o.status==='done'?'done':'new'}">${o.status||'nouvelle'}</span></td>`;
+          elRows.appendChild(tr);
+        });
+      }
+      elLast.textContent = new Date().toLocaleTimeString('fr-FR');
+    }
+
+    async function load(){
+      elErr.textContent = '';
+      try{
+        const orders = await fetchOrders();
+        render(orders);
+      }catch(err){
+        console.error(err);
+        elErr.textContent = "Erreur de chargement : " + err.message + " (vérifie l’URL Apps Script et la publication en tant qu’Application web).";
+      }
+    }
+
+    function loop(){
+      clearTimeout(timer);
+      load().finally(()=> timer = setTimeout(loop, 5000));
+    }
+
+    elSave.addEventListener('click', ()=>{
+      store.api = elApi.value.trim();
+      store.key = elKey.value.trim();
+      lastSeen = new Set();
+      loop();
+    });
+
+    elRef.addEventListener('click', ()=> load());
+
+    // Démarrage
+    loop();
+  </script>
 </body>
 </html>
