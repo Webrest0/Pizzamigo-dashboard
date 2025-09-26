@@ -1,183 +1,218 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dashboard — PIZZ’AMIGO</title>
-  <style>
-    :root{
-      --bg:#0c1117;--panel:#121a2b;--line:#243156;--txt:#e6edf3;
-      --muted:#9fb0ca;--green:#19c37d;--blue:#2d6cdf;--red:#ff6b6b;
-    }
-    html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial}
-    .wrap{max-width:1100px;margin:22px auto;padding:0 14px}
-    h1{font-size:22px;margin:0 0 12px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .row input{width:520px;max-width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0e1625;color:var(--txt)}
-    .row .mini{width:260px}
-    .btn{border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
-    .btn.save{background:var(--blue);color:#fff}
-    .btn.reload{background:#2a2f3a;color:#fff}
-    .btn.demo{background:#3b3f49;color:#fff}
-    .meta{color:var(--muted);font-size:12px;margin-top:6px}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top}
-    th{color:var(--muted);font-weight:600;text-align:left}
-    .status{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--line)}
-    .status.new{background:#0d3a23;color:#aef9d2}
-    .right{text-align:right;white-space:nowrap}
-    .muted{color:var(--muted)}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard — PIZZ’AMIGO</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121a2b; --line:#243156;
+    --muted:#b9c2d6; --green:#19c37d; --blue:#2d6cdf; --red:#d75a5a;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  .container{max-width:1100px;margin:22px auto;padding:0 14px}
+  h1{margin:0 0 14px 0;font-weight:700}
+  .board{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .row + .row{margin-top:10px}
+  .input{flex:1;min-width:280px;display:flex;align-items:center;gap:6px}
+  .input input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#0e1523;color:#fff}
+  .btn{border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .btn.primary{background:var(--green);color:#000}
+  .btn.blue{background:var(--blue);color:#fff}
+  .btn.gray{background:#223049;color:#fff}
+  .small{color:var(--muted);font-size:13px}
+  .meta{margin-left:auto}
+  .table{width:100%;border-collapse:collapse;margin-top:10px}
+  .table th,.table td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top}
+  .table th{font-weight:600;text-align:left}
+  .status{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:12px;border:1px solid var(--line)}
+  .status.new{background:#0d3a23;color:#9bffcf}
+  .status.ready{background:#2a3f22;color:#c9f7a0}
+  .status.done{background:#223049;color:#b9c2d6}
+  .actions{display:flex;gap:6px;flex-wrap:wrap}
+  .btn.ready{background:var(--blue);color:#fff}
+  .btn.done{background:var(--green);color:#000}
+  .error{color:#ff8a8a}
+</style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="container">
     <h1>Dashboard — PIZZ’AMIGO</h1>
-
-    <div class="card">
+    <div class="board">
       <div class="row">
-        <input id="api" placeholder="URL API (…/exec)" />
-        <input id="key" class="mini" placeholder="Clé admin (facultatif)" />
-        <button id="save" class="btn save">Enregistrer</button>
-        <button id="refresh" class="btn reload">Actualiser</button>
-        <button id="demo" class="btn demo" title="Ajoute 1 commande factice côté affichage">Démo</button>
+        <div class="input">
+          <label class="small" for="api">API :</label>
+          <input id="api" placeholder="https://script.google.com/macros/s/…/exec" />
+        </div>
+        <div class="input" style="max-width:420px">
+          <label class="small" for="adminkey">Clé admin (facultatif)</label>
+          <input id="adminkey" placeholder="ex: PIZZAMIGO-ADMIN-123" />
+        </div>
+        <button id="save" class="btn primary">Enregistrer</button>
+        <button id="refresh" class="btn gray">Actualiser</button>
+        <button id="demo" class="btn blue">Démo</button>
+        <div class="meta small">Dernière mise à jour — <span id="last">—</span></div>
       </div>
-      <div class="meta">
-        Dernière mise à jour — <span id="last">—</span>
-        · <span id="info" class="muted">Prêt</span>
-      </div>
-    </div>
 
-    <div class="card" style="margin-top:14px;overflow:auto">
-      <table>
+      <div id="err" class="small error" style="margin-top:6px"></div>
+
+      <table class="table">
         <thead>
           <tr>
             <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th>
-            <th>Horaire</th><th>Pizzas</th><th class="right">Total</th><th>Statut</th>
+            <th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th>Action</th>
           </tr>
         </thead>
         <tbody id="rows">
-          <tr><td colspan="8" class="muted">Chargement…</td></tr>
+          <tr><td colspan="9" class="small">Aucune commande pour le moment.</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <script>
-  // ====== Réglages persistés ======
-  const LS = 'pizzamigo-dashboard';
-  const S = JSON.parse(localStorage.getItem(LS) || '{}');
-  const $ = sel => document.querySelector(sel);
-  const apiInput = $('#api');
-  const keyInput = $('#key');
-  apiInput.value = S.api || 'https://script.google.com/macros/s/AKfycbw6YCxMsuQWvbseL44mpzaTFsaFq2PtzUhyea6M3yEy5dWjUMg7an97Lld9vo4aFIg7/exec';
-  keyInput.value = S.key || '';
+<script>
+(() => {
+  // --------- Config & helpers ----------
+  const HISTORY_HOURS = 24; // garder 24h d'historique à l'écran
 
-  // petit "bip"
-  const TONE = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAACABAAZGF0YQAAAAA=');
+  const apiInput   = document.querySelector('#api');
+  const keyInput   = document.querySelector('#adminkey');
+  const meta       = document.querySelector('#last');
+  const errBox     = document.querySelector('#err');
+  const tbody      = document.querySelector('#rows');
+  const btnSave    = document.querySelector('#save');
+  const btnRefresh = document.querySelector('#refresh');
+  const btnDemo    = document.querySelector('#demo');
+
+  const TONE = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAACABAAZGF0YQAAAAA=");
+
+  // localStorage
+  const store = {
+    get(){ try{ return JSON.parse(localStorage.getItem('pizzamigo_dash')||'{}'); }catch{return{}} },
+    set(v){ localStorage.setItem('pizzamigo_dash', JSON.stringify(v)); }
+  };
+  const cfg0 = store.get();
+  if (cfg0.api) apiInput.value = cfg0.api;
+  if (cfg0.key) keyInput.value = cfg0.key;
+
+  btnSave.addEventListener('click', () => {
+    store.set({ api: apiInput.value.trim(), key: keyInput.value.trim() });
+    ok('Sauvegardé.');
+  });
+
+  const euro = n => (Number(n)||0).toFixed(2).replace('.', ',')+' €';
+  const safe = v => v==null ? '' : String(v);
+  const whenOf = o => new Date(o.when || o.date || o.ts || Date.now());
+  const timeFR = d => { try{ return new Date(d).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch{return '-';} };
+
+  function base(){
+    const a = apiInput.value.trim();
+    if(!a) throw new Error('Renseigne l’URL de l’API');
+    return a + (a.includes('?') ? '&' : '?');
+  }
+  async function apiGet(q){
+    const url = base() + q + (keyInput.value.trim()?('&key='+encodeURIComponent(keyInput.value.trim())):'');
+    const res = await fetch(url, {cache:'no-store'});
+    const txt = await res.text();
+    let data; try{ data = JSON.parse(txt); }catch{ data={ok:false,error:'bad_json',raw:txt}; }
+    if(!res.ok || !data.ok) throw new Error(data.error||('HTTP '+res.status));
+    return data;
+  }
+  async function apiPost(payload){
+    const url = base() + (keyInput.value.trim()?('key='+encodeURIComponent(keyInput.value.trim())):'');
+    const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error((data && data.error) || ('HTTP '+res.status));
+    return data;
+  }
+
+  function ok(msg){
+    errBox.textContent = '';
+    meta.textContent = new Date().toLocaleTimeString('fr-FR') + ' — ' + msg;
+  }
+  function fail(msg){
+    errBox.textContent = msg;
+    meta.textContent = new Date().toLocaleTimeString('fr-FR') + ' — Erreur';
+  }
+
   let lastSeen = new Set();
 
-  function fmtTime(s){
-    try { return new Date(s.replace(' ', 'T')).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
-    catch(e){ return s || '-'; }
-  }
-  function euros(n){ return (Number(n)||0).toFixed(2).replace('.', ',') + ' €'; }
+  function render(all){
+    const cutoff = Date.now() - HISTORY_HOURS*3600*1000;
+    const list = (all||[])
+      .filter(o => whenOf(o).getTime() >= cutoff)
+      .sort((a,b)=> whenOf(b) - whenOf(a));
 
-  function save(){
-    const cfg = { api: apiInput.value.trim(), key: keyInput.value.trim() };
-    localStorage.setItem(LS, JSON.stringify(cfg));
-    $('#info').textContent = 'Réglages enregistrés';
-  }
-
-  // ====== Fetch JSON (fetch) + fallback JSONP pour CORS ======
-  async function fetchJSON(url){
-    // essai direct (CORS OK si Apps Script renvoie JSON standard)
-    try{
-      const r = await fetch(url, {cache:'no-store'});
-      const t = await r.text();
-      try { return JSON.parse(t); } catch { return { ok:false, error:'bad_json', raw:t }; }
-    }catch(e){}
-    // fallback JSONP
-    return new Promise((resolve)=>{
-      const cb = 'cb_'+Math.random().toString(36).slice(2);
-      const s  = document.createElement('script');
-      const sep = url.includes('?') ? '&' : '?';
-      s.src = url + sep + 'jsonp=' + cb;
-      window[cb] = (data)=>{ resolve(data); s.remove(); delete window[cb]; };
-      s.onerror = ()=>{ resolve({ok:false, error:'jsonp_failed'}); s.remove(); delete window[cb]; };
-      document.body.appendChild(s);
-    });
-  }
-
-  async function loadOrders(){
-    const api = apiInput.value.trim();
-    const key = keyInput.value.trim();
-    if(!api){ $('#info').textContent = 'Renseigne l’URL API /exec'; return; }
-
-    $('#info').textContent = 'Chargement…';
-    const url = api + (api.includes('?') ? '&' : '?') + 'list=1' + (key ? '&key='+encodeURIComponent(key):'');
-    const data = await fetchJSON(url);
-
-    const tbody = $('#rows'); tbody.innerHTML = '';
-    if(!data || data.ok !== true){
-      $('#info').textContent = 'Erreur réseau (timeout)';
-      tbody.innerHTML = '<tr><td colspan="8" class="muted">Erreur réseau / CORS — vérifie l’URL API et le déploiement.</td></tr>';
-      return;
-    }
-
-    const orders = data.orders || [];
+    // bip si nouvelles
     let ping = false;
-    orders.forEach(o => { if(!lastSeen.has(o.id)) ping = true; });
+    for(const o of list){ if(!lastSeen.has(o.id)) ping = true; }
     if(ping){ try{ TONE.play(); }catch{} }
 
-    if(orders.length === 0){
-      tbody.innerHTML = '<tr><td colspan="8" class="muted">Aucune commande pour le moment.</td></tr>';
-    }else{
-      orders.forEach(o=>{
-        lastSeen.add(o.id);
-        const tr = document.createElement('tr');
-        const pizzas = (o.items||[]).map(i=>`${i.name} × ${i.qty}`).join('<br>');
-        tr.innerHTML = `
-          <td>${fmtTime(o.when)}</td>
-          <td class="muted">${o.id||'-'}</td>
-          <td>${o.name||'-'}</td>
-          <td>${o.phone||'-'}</td>
-          <td>${o.slot||'-'}</td>
-          <td>${pizzas||'-'}</td>
-          <td class="right">${euros(o.total)}</td>
-          <td><span class="status new">${o.status||'nouvelle'}</span></td>`;
-        tbody.appendChild(tr);
-      });
+    tbody.innerHTML = '';
+    for(const o of list){
+      lastSeen.add(o.id);
+      const pizzas = (o.items||[]).map(i=>`${safe(i.name)} × ${safe(i.qty||1)}`).join('<br>');
+      const st = String(o.status||'new').toLowerCase();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${timeFR(whenOf(o))}</td>
+        <td class="small">${safe(o.id)||'-'}</td>
+        <td>${safe(o.name)||'-'}</td>
+        <td>${safe(o.phone)||'-'}</td>
+        <td>${safe(o.slot)||'-'}</td>
+        <td>${pizzas||'-'}</td>
+        <td>${euro(o.total)}</td>
+        <td><span class="status ${st}">${st==='done'?'terminée':(st==='ready'?'prête':'nouvelle')}</span></td>
+        <td class="actions">
+          <button class="btn ready" data-act="ready" data-id="${safe(o.id)}" ${st==='done'?'disabled':''}>Prête</button>
+          <button class="btn done"  data-act="done"  data-id="${safe(o.id)}">Terminée</button>
+        </td>`;
+      tbody.appendChild(tr);
     }
-
-    $('#last').textContent = new Date().toLocaleTimeString('fr-FR');
-    $('#info').textContent = 'OK';
+    if(list.length===0){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="9" class="small">Aucune commande sur les dernières ${HISTORY_HOURS} h.</td>`;
+      tbody.appendChild(tr);
+    }
+    ok('OK');
   }
 
-  // ====== Démo (visualisation locale seulement) ======
-  function demoRow(){
-    const tbody = $('#rows');
-    const id = 'DEMO-' + Math.random().toString(36).slice(2,6).toUpperCase();
-    const html = `
-      <tr>
-        <td>${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
-        <td class="muted">${id}</td>
-        <td>Test JSONP</td>
-        <td>06 00 00 00 00</td>
-        <td>19:00</td>
-        <td>Margharita × 1</td>
-        <td class="right">7,50 €</td>
-        <td><span class="status new">nouvelle</span></td>
-      </tr>`;
-    if(tbody.querySelector('.muted')) tbody.innerHTML = '';
-    tbody.insertAdjacentHTML('afterbegin', html);
+  async function loop(){
+    try{
+      const data = await apiGet('list=1'); // l’API renvoie {ok:true, orders:[…]}
+      render(data.orders||[]);
+    }catch(e){
+      fail(e.message);
+      console.error(e);
+    }finally{
+      setTimeout(loop, 5000);
+    }
   }
 
-  // ====== UI ======
-  $('#save').addEventListener('click', save);
-  $('#refresh').addEventListener('click', loadOrders);
-  $('#demo').addEventListener('click', demoRow);
-  window.addEventListener('DOMContentLoaded', ()=>{ save(); loadOrders(); setInterval(loadOrders, 5000); });
-  </script>
+  // actions statut
+  tbody.addEventListener('click', async (ev)=>{
+    const b = ev.target.closest('button[data-act]');
+    if(!b) return;
+    const id = b.getAttribute('data-id');
+    const status = b.getAttribute('data-act'); // ready | done
+    try{
+      await apiPost({ action:'status', id, status });
+      await loop();
+    }catch(e){
+      alert("Impossible de mettre à jour le statut : " + e.message);
+    }
+  });
+
+  btnRefresh.addEventListener('click', loop);
+  btnDemo.addEventListener('click', async ()=>{
+    try{ await apiGet('demo=1'); }catch(e){ console.warn(e); }
+  });
+
+  // auto-start
+  loop();
+})();
+</script>
 </body>
 </html>
