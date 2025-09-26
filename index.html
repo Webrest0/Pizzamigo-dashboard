@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — PIZZ’AMIGO</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121a2b; --line:#25335a;
+    --text:#e6eefc; --muted:#b7c2d9; --accent:#19c37d; --warn:#ffae42;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+  h1{margin:0 0 14px;font-size:26px;letter-spacing:.3px}
+  .bar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:8px 0 16px}
+  .pill{background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:10px;display:flex;gap:12px;align-items:center}
+  .small{color:var(--muted);font-size:13px}
+  .btn{cursor:pointer;border:0;border-radius:10px;padding:8px 12px;background:var(--accent);color:#001c0f;font-weight:600}
+  .btn:active{transform:translateY(1px)}
+  .tbl{width:100%;border-collapse:collapse;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  .tbl th,.tbl td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tbl th{color:#9fb0d0;text-align:left;font-weight:600;background:rgba(255,255,255,.02)}
+  .tbl tr:last-child td{border-bottom:0}
+  .status{display:inline-block;border:1px solid var(--line);padding:3px 8px;border-radius:9999px;font-size:12px}
+  .status.new{background:#103b27;color:#b7ffd9}
+  .money{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .empty{padding:18px;color:var(--muted);text-align:center}
+  input[type="text"]{background:#0e1524;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 8px}
+  @media (max-width:720px){
+    .hide-sm{display:none}
+    .tbl td, .tbl th{padding:8px}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Dashboard — PIZZ’AMIGO</h1>
+
+    <div class="bar">
+      <div class="pill">
+        <div class="small">API :</div>
+        <div id="api" class="small" style="font-family:ui-monospace,Menlo,Consolas">—</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <label class="small" title="Optionnel — seulement si l'API en exige une">Clé admin :
+          <input id="adm" type="text" placeholder="(facultatif)" style="width:170px;margin-left:6px">
+        </label>
+        <button id="refresh" class="btn">Actualiser</button>
+      </div>
+    </div>
+
+    <div class="pill small" id="msg">Prêt.</div>
+
+    <table class="tbl" id="grid">
+      <thead>
+        <tr>
+          <th>Heure</th>
+          <th class="hide-sm">ID</th>
+          <th>Client</th>
+          <th class="hide-sm">Téléphone</th>
+          <th>Horaire</th>
+          <th>Pizzas</th>
+          <th>Total</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="8" class="empty">Aucune commande pour le moment.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+<script>
+/*** CONFIG — mets uniquement ton URL ici ***/
+const API_URL = "https://script.google.com/macros/s/AKfycbyWVDdvwtBQ-80d1obtwnEEkn--bf8gQLB6pGXzZS9hjR4n0SMSVSRGKJgyqVoP8d0/exec";
+/*** fin config ***/
+
+document.getElementById('api').textContent = API_URL;
+
+const BEEP = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAACABAAZGF0YQAAAAA="); // clic bref
+let seen = new Set();
+
+function fmtTime(s){
+  try{ return new Date(s.replace(" ","T")).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return s; }
+}
+function euro(n){
+  return (Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+}
+function line(o){
+  const tr = document.createElement('tr');
+  const pizzas = (o.items||[]).map(i => `${i.name} × ${i.qty}`).join("<br>");
+  tr.innerHTML = `
+    <td>${fmtTime(o.when||"")}</td>
+    <td class="hide-sm small">${o.id||""}</td>
+    <td>${escapeHTML(o.name||"")}</td>
+    <td class="hide-sm">${escapeHTML(o.phone||"")}</td>
+    <td>${escapeHTML(o.slot||"")}</td>
+    <td>${pizzas||"-"}</td>
+    <td class="money">${euro(o.total)}</td>
+    <td><span class="status new">nouvelle</span></td>
+  `;
+  return tr;
+}
+function escapeHTML(s){return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+
+async function fetchOrders(){
+  const key = (document.getElementById('adm').value||"").trim();
+  const url = API_URL + "?list=1" + (key?("&key="+encodeURIComponent(key)):"");
+  const t0 = Date.now();
+  const res = await fetch(url, {cache:'no-store'});
+  const txt = await res.text();
+  let data; try{ data = JSON.parse(txt) } catch { data = { ok:false, error:"bad_json", raw:txt } }
+  if(!data.ok) throw new Error(data.error||("HTTP "+res.status));
+  const took = Date.now()-t0;
+  document.getElementById('msg').textContent = `Chargé ${data.orders.length} commande(s) • ${took} ms • ${new Date().toLocaleTimeString('fr-FR')}`;
+  return data.orders;
+}
+
+function render(orders){
+  const tb = document.getElementById('rows');
+  tb.innerHTML = "";
+  let ping = false;
+  for (const o of orders) if(!seen.has(o.id)) ping = true;
+  if (ping) { try{BEEP.play()}catch{} }
+  orders.forEach(o=>{ seen.add(o.id); tb.appendChild(line(o)); });
+  if (!orders.length){
+    tb.innerHTML = `<tr><td colspan="8" class="empty">Aucune commande pour le moment.</td></tr>`;
+  }
+}
+
+async function refresh(){ try{ render(await fetchOrders()) } catch(e){ document.getElementById('msg').textContent = "Erreur : "+e.message } }
+let loopTimer = null;
+function loop(){ clearTimeout(loopTimer); refresh().finally(()=>{ loopTimer = setTimeout(loop, 5000); }); }
+
+document.getElementById('refresh').addEventListener('click', refresh);
+window.addEventListener('DOMContentLoaded', loop);
+</script>
+</body>
+</html>
