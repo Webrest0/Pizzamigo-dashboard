@@ -22,7 +22,7 @@
   tr:nth-child(even){background:#121a27}
   .actions .btn{padding:6px 8px;margin:2px;font-size:13px}
 
-  /* Mobile responsive table */
+  /* Mobile */
   @media(max-width:760px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
@@ -53,7 +53,7 @@
       <label class="muted">Clé admin (facultatif) :</label>
       <input id="adminkey" placeholder="ex: PIZZAMIGO-ADMIN-123"/>
       <button class="btn" onclick="saveCfg()">Enregistrer</button>
-      <button class="btn" onclick="loadOrders()">Actualiser</button>
+      <button class="btn" onclick="fetchAndMerge()">Actualiser</button>
       <button class="btn primary" onclick="demoOrder()">Démo</button>
     </div>
     <div id="status" class="muted" style="margin-top:6px"></div>
@@ -67,17 +67,23 @@
   </table>
 </div>
 
-<!-- son court, propre -->
+<!-- son cloche court -->
 <audio id="ding" preload="auto">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  <source src="https://actions.google.com/sounds/v1/doors/doorbell.ogg" type="audio/ogg">
 </audio>
 
 <script>
+/* ===== CONFIG ===== */
 const LSKEY="pizzapi", LSADM="pizzadm";
 const DEFAULT_API="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec";
 
 api.value = localStorage.getItem(LSKEY) || DEFAULT_API;
 adminkey.value = localStorage.getItem(LSADM) || "";
+
+/* ===== ÉTAT =====
+   rows = Map(id -> {tr, data})
+   On MERGE: on ajoute/maj les ids reçus, on NE SUPPRIME RIEN. */
+const rows = new Map();
 
 function saveCfg(){
   localStorage.setItem(LSKEY, api.value.trim());
@@ -85,47 +91,92 @@ function saveCfg(){
   alert("Config enregistrée.");
 }
 
-async function loadOrders(){
+function pizzasText(o){
+  const items = (o.basket || o.items || []);
+  return items.map(i => ((i.name||i.n)||'') + " x" + (i.qty||1)).join(", ");
+}
+function euro(v){ return (Number(v)||0).toFixed(2) + " €"; }
+
+function buildRow(o){
+  const tr = document.createElement("tr");
+  tr.dataset.id = o.id;
+
+  const tdWhen = document.createElement("td");
+  const tdId   = document.createElement("td");
+  const tdName = document.createElement("td");
+  const tdPhone= document.createElement("td");
+  const tdSlot = document.createElement("td");
+  const tdItems= document.createElement("td");
+  const tdTot  = document.createElement("td");
+  const tdStat = document.createElement("td");
+  const tdAct  = document.createElement("td"); tdAct.className="actions";
+
+  tr.append(tdWhen, tdId, tdName, tdPhone, tdSlot, tdItems, tdTot, tdStat, tdAct);
+
+  // boutons actions
+  const btnReady = document.createElement("button");
+  btnReady.className="btn"; btnReady.textContent="Prête";
+  btnReady.onclick = ()=> setStatus(o.id,'ready');
+
+  const btnDone = document.createElement("button");
+  btnDone.className="btn primary"; btnDone.textContent="Terminée";
+  btnDone.onclick = ()=> setStatus(o.id,'done');
+
+  const btnCancel = document.createElement("button");
+  btnCancel.className="btn red"; btnCancel.textContent="Annuler";
+  btnCancel.onclick = ()=> setStatus(o.id,'canceled');
+
+  const btnX = document.createElement("button");
+  btnX.className="btn"; btnX.textContent="✖";
+  btnX.title = "Retirer cette ligne (local)";
+  btnX.onclick = ()=> { tr.remove(); rows.delete(o.id); };
+
+  tdAct.append(btnReady, btnDone, btnCancel, btnX);
+
+  // méthode de mise à jour
+  tr.update = (data)=>{
+    tdWhen.textContent = data.when||"";
+    tdId.textContent   = data.id||"";
+    tdName.textContent = data.name||"";
+    tdPhone.textContent= data.phone||"";
+    tdSlot.textContent = data.slot||"";
+    tdItems.textContent= pizzasText(data);
+    tdTot.textContent  = euro(data.total);
+    tdStat.textContent = data.status||"";
+  };
+
+  tr.update(o);
+  return tr;
+}
+
+function upsert(o){
+  if(!o || !o.id) return;
+  const tbody = document.querySelector("#orders tbody");
+  const rec = rows.get(o.id);
+  if(rec){
+    rec.tr.update(o);
+    rec.data = o;
+  }else{
+    const tr = buildRow(o);
+    rows.set(o.id, {tr, data:o});
+    tbody.prepend(tr); // nouvelles en haut
+    // son de cloche pour nouvelle entrée (pas pour MAJ)
+    try{ document.getElementById("ding").play(); }catch{}
+  }
+}
+
+async function fetchAndMerge(){
   try{
     status.textContent="Chargement…";
     const res = await fetch(api.value + "?t=" + Date.now());
     const data = await res.json();
     if(!data.ok) throw new Error(data.error||"API");
-    renderOrders(data.orders||[]);
+    (data.orders||[]).forEach(upsert);
     status.textContent = "Dernière mise à jour — " + new Date().toLocaleTimeString("fr-FR");
   }catch(e){
     status.textContent="Erreur: "+e.message;
     console.error(e);
   }
-}
-
-function renderOrders(orders){
-  const tb = document.querySelector("#orders tbody");
-  const before = tb.childElementCount;
-  tb.innerHTML="";
-
-  orders.forEach(o=>{
-    const items = (o.basket || o.items || []).map(i=>(i.name||i.n)+" x"+i.qty).join(", ");
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${o.when||""}</td>
-      <td>${o.id||""}</td>
-      <td>${o.name||""}</td>
-      <td>${o.phone||""}</td>
-      <td>${o.slot||""}</td>
-      <td>${items}</td>
-      <td>${(Number(o.total)||0).toFixed(2)} €</td>
-      <td>${o.status||""}</td>
-      <td class="actions">
-        <button class="btn" onclick="setStatus('${o.id}','ready')">Prête</button>
-        <button class="btn primary" onclick="setStatus('${o.id}','done')">Terminée</button>
-        <button class="btn red" onclick="setStatus('${o.id}','canceled')">Annuler</button>
-      </td>`;
-    tb.appendChild(tr);
-  });
-
-  // ding si nouvelle commande affichée
-  if(orders.length > before){ try{ document.getElementById("ding").play(); }catch{} }
 }
 
 async function setStatus(id,statusNew){
@@ -135,7 +186,9 @@ async function setStatus(id,statusNew){
       headers:{"Content-Type":"text/plain;charset=utf-8"},
       body: JSON.stringify({ admin: adminkey.value||"", id, status: statusNew })
     });
-    loadOrders();
+    // on met aussi à jour la ligne locale
+    const rec = rows.get(id);
+    if(rec){ rec.data.status = statusNew; rec.tr.update(rec.data); }
   }catch(e){ alert("Erreur: "+e.message); }
 }
 
@@ -146,12 +199,14 @@ function demoOrder(){
     name:"Test JSONP", phone:"06 00 00 00 00", slot:"19:00",
     basket:[{name:"Margharita",qty:1}], total:7.50, status:"new"
   };
-  renderOrders([demo]);
+  upsert(demo);
   status.textContent = "Démo ajoutée";
 }
 
-loadOrders();
-setInterval(loadOrders, 10000);
+/* 1er chargement + refresh pour écouter les nouvelles commandes,
+   sans jamais vider le tableau existant. */
+fetchAndMerge();
+setInterval(fetchAndMerge, 10000);
 </script>
 </body>
-</html>
+</html>    
