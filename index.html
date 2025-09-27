@@ -1,148 +1,274 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-:root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252;--accent:#ffb54c}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-.wrap{max-width:1100px;margin:20px auto;padding:0 14px}
-h1{margin:0 0 12px}
-.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-input[type=text]{flex:1;min-width:230px;background:#0e1420;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px}
-.btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
-.btn.primary{background:var(--green);color:#001b10;border-color:transparent}
-.btn.red{border-color:#ff8b8b;color:#ffb4b4}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border-bottom:1px solid var(--line);padding:10px 8px;font-size:14px;text-align:left;vertical-align:top}
-th{color:#cfd6e7;font-weight:700}
-.badge{padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
-.st-new{background:rgba(255,181,76,.1)} .st-ready{background:rgba(31,207,124,.12)} .st-canceled{background:rgba(229,82,82,.12)}
-.right{display:flex;gap:6px;justify-content:flex-end}
-.muted{color:var(--muted)}
-@media(max-width:720px){ th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){display:none} }
+  :root{
+    --bg:#0b0f14;--panel:#101722;--line:#273149;--muted:#b8c2d6;
+    --green:#1fcf7c;--red:#e55252;--white:#ffffff;--accent:#ffb54c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 12px}
+  h1{margin:0 0 12px;font-size:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input[type="text"]{flex:1;min-width:260px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:8px}
+  .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
+  .btn.primary{background:var(--green);color:#071d12;border-color:transparent}
+  .btn.ghost{opacity:.85}
+  .btn.red{border-color:#ff9b9b;color:#ffbebe}
+  .hint{color:var(--muted);font-size:.9rem}
+  .status-ok{color:#7dffb1}
+  .status-err{color:#ffb3b3}
+
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border-top:1px solid var(--line);padding:10px 8px;text-align:left;font-size:.95rem}
+  th{font-weight:700;color:#dfe7fb}
+  td.num{text-align:right;white-space:nowrap}
+  td.actions{white-space:nowrap}
+  .pill{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:.85rem}
+  .pill.new{background:#13221a;color:#8bffc2;border-color:#234}
+  .pill.ready{background:#231c0f;color:#ffd391;border-color:#44361c}
+  .pill.done{background:#17202a;color:#a8d5ff;border-color:#294}
+  .pill.canceled{background:#2a1717;color:#ffb7b7;border-color:#542}
+
+  /* Mobile first */
+  @media (max-width:760px){
+    .hide-sm{display:none}
+    th:nth-child(3), td:nth-child(3){display:none} /* client */
+    th:nth-child(4), td:nth-child(4){display:none} /* phone */
+    th:nth-child(6), td:nth-child(6){display:none} /* pizzas text long */
+  }
+
+  /* panneau erreur JS discret */
+  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;
+       padding:10px 12px;display:none;z-index:999}
+  #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Dashboard — PIZZ’AMIGO</h1>
 
-  <div class="box">
+  <div class="card">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API (exec)">
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
+      <input id="api" type="text" placeholder="URL de l’API (exec)" />
+      <input id="adm" type="text" placeholder="Clé admin (facultatif)" />
       <button class="btn" id="save">Enregistrer</button>
       <button class="btn" id="refresh">Actualiser</button>
       <button class="btn" id="demo">Démo</button>
-      <span class="muted" id="info">Prêt.</span>
+      <span id="last" class="hint">Dernière mise à jour — <span id="last-val">—</span></span>
+      <span id="net" class="hint status-err hide-sm"></span>
     </div>
   </div>
 
-  <div class="box" style="margin-top:10px">
-    <table>
+  <div class="card" style="margin-top:10px">
+    <table id="tbl">
       <thead>
         <tr>
-          <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th><th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th class="right">Action</th>
+          <th>Heure</th>
+          <th class="hide-sm">ID</th>
+          <th>Client</th>
+          <th class="hide-sm">Téléphone</th>
+          <th>Horaire</th>
+          <th>Pizzas</th>
+          <th class="num">Total</th>
+          <th>Statut</th>
+          <th class="actions">Action</th>
         </tr>
       </thead>
-      <tbody id="body"><tr><td colspan="9" class="muted">Aucune commande sur les dernières 24 h.</td></tr></tbody>
+      <tbody id="rows">
+        <tr><td colspan="9" class="hint" style="text-align:center">Aucune commande sur les dernières 24 h.</td></tr>
+      </tbody>
     </table>
   </div>
 </div>
 
+<!-- bip « cloche » très court (500 ms) -->
+<audio id="bell" preload="auto">
+  <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQAA" type="audio/mp3">
+</audio>
+
+<!-- Panneau erreurs -->
+<div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
+
 <script>
-const $=s=>document.querySelector(s);
-const api=$('#api'),adm=$('#adm'),info=$('#info'),tbody=$('#body');
+/* ===== Anti page blanche : capter erreurs ===== */
+function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
+window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-// Cloche via WebAudio (1.0 s, “cool”, non agressif)
-let AC,unlocked=false;
-function ring(){
-  try{
-    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
-    const t0 = AC.currentTime+0.01;
-    const g = AC.createGain(); g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(0.7,t0+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t0+1.05);
-    // deux petits “ding”
-    [880,1318].forEach((f,i)=>{
-      const o=AC.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(f,t0+0.02*i);
-      o.connect(g); o.start(t0+0.02*i); o.stop(t0+0.45+0.02*i);
-    });
-    // un bruit court pour l’attaque
-    const n=AC.createBufferSource(); const b=AC.createBuffer(1,AC.sampleRate*0.08,AC.sampleRate); const d=b.getChannelData(0);
-    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/d.length);
-    n.buffer=b; const gn=AC.createGain(); gn.gain.value=0.25; n.connect(gn); gn.connect(g);
-    n.start(t0);
-    g.connect(AC.destination);
-  }catch(e){/* ignore */}
-}
-window.addEventListener('pointerdown',()=>{ if(AC && AC.state==='suspended') AC.resume(); unlocked=true; },{once:true});
-
-let seen=new Map();
-function render(list){
-  tbody.innerHTML='';
-  if(!list.length){ tbody.innerHTML='<tr><td colspan="9" class="muted">Aucune commande sur les dernières 24 h.</td></tr>'; return; }
-  list.forEach(o=>{
-    if(!seen.has(o.id)){ seen.set(o.id,1); ring(); } // son à la VRAIE nouveauté
-    const tr=document.createElement('tr');
-    const pizzas=(o.basket||o.items||[]).map(it=>`${it.name} × ${it.qty||1}`).join(', ');
-    tr.innerHTML=`
-      <td>${o.when||o.time||''}</td>
-      <td>${o.id||''}</td>
-      <td>${o.name||''}</td>
-      <td>${o.phone||''}</td>
-      <td>${o.slot||''}</td>
-      <td>${pizzas||'-'}</td>
-      <td>${(Number(o.total)||0).toFixed(2).replace('.',',')} €</td>
-      <td><span class="badge ${o.status==='new'?'st-new':o.status==='ready'?'st-ready':o.status==='canceled'?'st-canceled':''}">${o.status||'new'}</span></td>
-      <td class="right">
-        <button class="btn" data-act="ready">Prête</button>
-        <button class="btn" data-act="done">Terminée</button>
-        <button class="btn" data-act="cancel">Annuler</button>
-        <button class="btn red" data-act="del">×</button>
-      </td>`;
-    tr.addEventListener('click',async e=>{
-      const act=e.target?.dataset?.act; if(!act) return;
-      if(act==='del'){ tr.remove(); return; } // suppression locale (ex: démo)
-      try{
-        const url=api.value.trim(); if(!url) return;
-        await fetch(url+'?id='+(o.id||'')+'&action='+act+'&key='+(adm.value||''),{method:'GET',cache:'no-store'});
-        info.textContent='OK';
-      }catch(err){ console.error(err); info.textContent='Erreur action'; }
-    });
-    tbody.appendChild(tr);
-  });
-}
-
-async function loop(){
-  const url=api.value.trim(); if(!url){ info.textContent="Renseigne l’URL de l’API"; return; }
-  try{
-    const r=await fetch(url+'?list=1',{cache:'no-store'});
-    const data=await r.json();
-    if(data?.ok && Array.isArray(data.orders)){ render(data.orders); info.textContent='Dernière mise à jour — OK'; }
-    else{ info.textContent='Réponse inattendue'; console.warn(data); }
-  }catch(e){ info.textContent='Erreur réseau'; console.error(e); }
-}
-
-// UI
-api.value=localStorage.getItem('PA_API')||''; adm.value=localStorage.getItem('PA_ADM')||'';
-$('#save').onclick=()=>{ localStorage.setItem('PA_API',api.value.trim()); localStorage.setItem('PA_ADM',adm.value.trim()); info.textContent='Enregistré.'; };
-$('#refresh').onclick=()=>loop();
-$('#demo').onclick=async ()=>{
-  try{
-    const url=api.value.trim(); if(!url){ info.textContent="Renseigne l’URL de l’API"; return; }
-    await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({
-      demo:true,name:'Test JSONP',phone:'06 00 00 00 00',slot:'19:00',
-      items:[{name:'Margharita',qty:1,price:7.5}],total:7.5,source:'site'
-    })});
-    ring(); // son immédiat quand on clique “Démo”
-    info.textContent='Démo envoyée.';
-    setTimeout(loop,800);
-  }catch(e){ info.textContent='Erreur démo'; console.error(e); }
+const LS = {
+  get api(){ return localStorage.getItem('api') || '' },
+  set api(v){ localStorage.setItem('api', v) },
+  get adm(){ return localStorage.getItem('adm') || '' },
+  set adm(v){ localStorage.setItem('adm', v) },
+  get seen(){ return JSON.parse(localStorage.getItem('seen')||'[]') },
+  set seen(v){ localStorage.setItem('seen', JSON.stringify(v)) },
 };
+const rowsEl = document.getElementById('rows');
+const lastEl = document.getElementById('last-val');
+const netEl  = document.getElementById('net');
+const bell   = document.getElementById('bell');
 
-loop();
-setInterval(loop,12000);
+function euro(v){return Number(v||0).toFixed(2).replace('.',',')+' €';}
+function nowHHMM(){const d=new Date();return d.toTimeString().slice(0,5);}
+
+function setStatus(text, ok=true){ lastEl.textContent = text; netEl.textContent = ok?'OK':'Erreur réseau'; netEl.className = 'hint ' + (ok?'status-ok':'status-err'); }
+
+/* ===== RENDER ===== */
+const state = { items: new Map() }; // id -> item
+
+function rowHtml(o){
+  return `<tr data-id="${o.id}">
+    <td>${o.when || nowHHMM()}</td>
+    <td class="hide-sm">${o.id}</td>
+    <td>${o.name||'-'}</td>
+    <td class="hide-sm">${o.phone||'-'}</td>
+    <td>${o.slot||'-'}</td>
+    <td>${o.pizzas||'-'}</td>
+    <td class="num">${euro(o.total)}</td>
+    <td><span class="pill ${o.status||'new'}">${o.status||'new'}</span></td>
+    <td class="actions">
+      <button class="btn ghost act" data-act="ready">Prête</button>
+      <button class="btn ghost act" data-act="done">Terminée</button>
+      <button class="btn ghost act" data-act="canceled">Annuler</button>
+      <button class="btn red del"  title="Supprimer">✖</button>
+    </td>
+  </tr>`;
+}
+
+function mountRow(o, playSound){
+  // déjà affiché ?
+  if (state.items.has(o.id)) return;
+  const tmp = document.createElement('tbody');
+  tmp.innerHTML = rowHtml(o);
+  const tr = tmp.firstElementChild;
+  // actions
+  tr.querySelectorAll('.act').forEach(b=>{
+    b.onclick=()=> updateStatus(o.id, b.dataset.act);
+  });
+  tr.querySelector('.del').onclick=()=> removeRow(o.id);
+  // insérer en haut
+  if (rowsEl.firstElementChild && rowsEl.firstElementChild.children.length>1) {
+    rowsEl.insertBefore(tr, rowsEl.firstElementChild);
+  } else {
+    rowsEl.innerHTML=''; rowsEl.appendChild(tr);
+  }
+  state.items.set(o.id, o);
+  if (playSound) { try{ bell.currentTime=0; bell.play(); }catch{} }
+}
+
+function removeRow(id){
+  const tr = rowsEl.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+  if (tr) tr.remove();
+  state.items.delete(id);
+  const seen = LS.seen.filter(x=>x!==id);
+  LS.seen = seen;
+  if (!rowsEl.children.length){
+    rowsEl.innerHTML = `<tr><td colspan="9" class="hint" style="text-align:center">Aucune commande sur les dernières 24 h.</td></tr>`;
+  }
+}
+
+function updateStatus(id, s){
+  const tr = rowsEl.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+  if (!tr) return;
+  const pill = tr.querySelector('.pill');
+  pill.className = 'pill '+s;
+  pill.textContent = s;
+}
+
+/* ===== API CALLS ===== */
+function apiUrl(){ return (document.getElementById('api').value||'').trim(); }
+
+async function ping(){
+  try{
+    const r = await fetch(apiUrl()+'?ping=1', {method:'GET', cache:'no-store'});
+    const t = await r.text();
+    if (/ok/i.test(t)) { setStatus('— OK', true); return true; }
+    setStatus('— Erreur', false); return false;
+  }catch(e){ setStatus('— Erreur réseau', false); return false; }
+}
+
+async function loadToday(){
+  if (!apiUrl()) { setStatus("— Renseigne l’URL de l’API", false); return; }
+  try{
+    const r = await fetch(apiUrl()+'?list=1', {method:'GET', cache:'no-store'});
+    const j = await r.json(); // {ok:true, orders:[...]}
+    if (!j.ok) throw new Error('Réponse invalide');
+    // ne PAS effacer -> n’ajouter que les nouvelles
+    const seen = LS.seen;
+    let added = 0;
+    j.orders.forEach(o=>{
+      // support panier string/json
+      let pizzas = '';
+      try{
+        const arr = Array.isArray(o.basket) ? o.basket :
+                    (o.items ? o.items :
+                      JSON.parse(String(o.basket||'[]')));
+        pizzas = arr.map(x=>`${x.name} × ${x.qty}`).join(', ');
+      }catch{ pizzas = String(o.pizzas||''); }
+      const rec = {
+        id:o.id, when:o.when, name:o.name, phone:o.phone, slot:o.slot,
+        pizzas, total:o.total, status:o.status||'new'
+      };
+      mountRow(rec, !seen.includes(o.id)); // son si jamais vu
+      if (!seen.includes(o.id)) { seen.push(o.id); added++; }
+    });
+    if (added>0) LS.seen = seen;
+    setStatus('— OK', true);
+  }catch(err){
+    console.error(err);
+    setStatus('— Erreur réseau', false);
+  }
+}
+
+async function sendDemo(){
+  if (!apiUrl()) { alert("Ajoute l’URL de l’API d’abord."); return; }
+  try{
+    const demo = {
+      name: "Test JSONP",
+      phone: "0600000000",
+      slot: "19:00",
+      note: "Démo",
+      items: [{name:"Margharita", qty:1, price:7.5}],
+      total: 7.5,
+      source: "demo"
+    };
+    // L’API attend du text/plain
+    const r = await fetch(apiUrl(), {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(demo)
+    });
+    const txt = await r.text(); let j={};
+    try{ j = JSON.parse(txt);}catch{ j={ok:false, raw:txt}; }
+    if (!r.ok || !j.ok) throw new Error('API démo refusée');
+    setStatus('— Démo envoyée, chargement…', true);
+    setTimeout(loadToday, 500); // récupère après écriture
+  }catch(err){
+    console.error(err);
+    setStatus('— Erreur réseau', false);
+    alert("Échec d’envoi de la démo.");
+  }
+}
+
+/* ===== BOOT ===== */
+document.getElementById('api').value = LS.api;
+document.getElementById('adm').value = LS.adm;
+document.getElementById('save').onclick = ()=>{
+  LS.api = apiUrl(); LS.adm = (document.getElementById('adm').value||'').trim();
+  setStatus('— Sauvé', true);
+};
+document.getElementById('refresh').onclick = loadToday;
+document.getElementById('demo').onclick = sendDemo;
+
+// petit poll qui n’efface rien : ajoute seulement les nouvelles
+setInterval(loadToday, 8000);
+ping().then(ok=> ok && loadToday());
 </script>
 </body>
 </html>
