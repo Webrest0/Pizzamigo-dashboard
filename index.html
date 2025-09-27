@@ -2,26 +2,27 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252;--accent:#ffb54c}
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:20px auto;padding:0 14px}
-  h1{margin:0 0 12px}
-  .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-  .row{display:flex;gap:10px;align-items:center}
-  input[type=text]{width:100%;background:#0e1420;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
-  .btn.primary{background:var(--green);color:#001b10;border-color:transparent}
-  .btn.red{border-color:#ff8b8b;color:#ffb4b4}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{border-bottom:1px solid var(--line);padding:10px 8px;font-size:14px;text-align:left}
-  th{color:#cfd6e7;font-weight:700}
-  .badge{padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
-  .st-new{background:rgba(255,181,76,.1)} .st-ready{background:rgba(31,207,124,.12)} .st-canceled{background:rgba(229,82,82,.12)}
-  .right{display:flex;gap:6px;justify-content:flex-end}
-  .muted{color:var(--muted)}
+:root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252;--accent:#ffb54c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+.wrap{max-width:1100px;margin:20px auto;padding:0 14px}
+h1{margin:0 0 12px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type=text]{flex:1;min-width:230px;background:#0e1420;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px}
+.btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+.btn.primary{background:var(--green);color:#001b10;border-color:transparent}
+.btn.red{border-color:#ff8b8b;color:#ffb4b4}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border-bottom:1px solid var(--line);padding:10px 8px;font-size:14px;text-align:left;vertical-align:top}
+th{color:#cfd6e7;font-weight:700}
+.badge{padding:2px 8px;border-radius:999px;border:1px solid var(--line);font-size:12px}
+.st-new{background:rgba(255,181,76,.1)} .st-ready{background:rgba(31,207,124,.12)} .st-canceled{background:rgba(229,82,82,.12)}
+.right{display:flex;gap:6px;justify-content:flex-end}
+.muted{color:var(--muted)}
+@media(max-width:720px){ th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){display:none} }
 </style>
 </head>
 <body>
@@ -30,17 +31,17 @@
 
   <div class="box">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API (exec)" />
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px"/>
+      <input id="api" type="text" placeholder="URL de l’API (exec)">
+      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
       <button class="btn" id="save">Enregistrer</button>
       <button class="btn" id="refresh">Actualiser</button>
       <button class="btn" id="demo">Démo</button>
+      <span class="muted" id="info">Prêt.</span>
     </div>
-    <div class="muted" id="info">Prêt.</div>
   </div>
 
   <div class="box" style="margin-top:10px">
-    <table id="tbl">
+    <table>
       <thead>
         <tr>
           <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th><th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th class="right">Action</th>
@@ -51,100 +52,97 @@
   </div>
 </div>
 
-<!-- Cloche courte (≈1.1 s, base64, volume modéré) -->
-<audio id="bell" preload="auto">
-  <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAA..." type="audio/mp3">
-</audio>
-
 <script>
-const $ = s=>document.querySelector(s);
-const apiInput = $('#api'); const admInput = $('#adm'); const info = $('#info'); const body = $('#body');
-const bell = $('#bell');
+const $=s=>document.querySelector(s);
+const api=$('#api'),adm=$('#adm'),info=$('#info'),tbody=$('#body');
 
-// charge config locale
-(function init(){
-  apiInput.value = localStorage.getItem('PA_API')||"";
-  admInput.value = localStorage.getItem('PA_ADM')||"";
-  loop(); // premier chargement
-})();
-
-$('#save').onclick = ()=>{ localStorage.setItem('PA_API', apiInput.value.trim()); localStorage.setItem('PA_ADM', admInput.value.trim()); info.textContent='Enregistré.'; };
-
-$('#refresh').onclick = ()=> loop();
-
-$('#demo').onclick = async ()=>{
+// Cloche via WebAudio (1.0 s, “cool”, non agressif)
+let AC,unlocked=false;
+function ring(){
   try{
-    const url = apiInput.value.trim(); if(!url){ info.textContent="Renseigne l’URL de l’API"; return; }
-    await fetch(url, {method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({
-      demo:true, name:'Test JSONP', phone:'06 00 00 00 00', slot:'19:00',
-      items:[{name:'Margharita',qty:1,price:7.5}], total:7.5, source:'site'
-    })});
-    info.textContent = 'Démo envoyée.';
-    await loop(true); // force refresh
-  }catch(e){ info.textContent='Erreur démo'; console.error(e); }
-};
-
-// rendu d'une ligne
-function tr(o){
-  const tr = document.createElement('tr');
-  const pizzas = (o.basket||o.items||[]).map(it=>`${it.name} × ${it.qty||1}`).join(', ');
-  tr.innerHTML = `
-    <td>${o.when||o.time||''}</td>
-    <td>${o.id||''}</td>
-    <td>${o.name||''}</td>
-    <td>${o.phone||''}</td>
-    <td>${o.slot||''}</td>
-    <td>${pizzas}</td>
-    <td>${(Number(o.total)||0).toFixed(2).replace('.',',')} €</td>
-    <td><span class="badge ${o.status==='new'?'st-new':o.status==='ready'?'st-ready':o.status==='canceled'?'st-canceled':''}">${o.status||'new'}</span></td>
-    <td class="right">
-      <button class="btn" data-act="ready">Prête</button>
-      <button class="btn" data-act="done">Terminée</button>
-      <button class="btn" data-act="cancel">Annuler</button>
-      <button class="btn red" data-act="del">×</button>
-    </td>`;
-  tr.onclick = async (e)=>{
-    const act = e.target?.dataset?.act; if(!act) return;
-    if(act==='del'){ tr.remove(); return; } // suppression manuelle locale (démo incluse)
-    try{
-      const url = apiInput.value.trim(); if(!url) return;
-      await fetch(url+'?id='+(o.id||'')+'&action='+act+'&key='+(admInput.value||''), {method:'GET'});
-      info.textContent = 'OK';
-    }catch(err){ console.error(err); info.textContent='Erreur action'; }
-  };
-  return tr;
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const t0 = AC.currentTime+0.01;
+    const g = AC.createGain(); g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(0.7,t0+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t0+1.05);
+    // deux petits “ding”
+    [880,1318].forEach((f,i)=>{
+      const o=AC.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(f,t0+0.02*i);
+      o.connect(g); o.start(t0+0.02*i); o.stop(t0+0.45+0.02*i);
+    });
+    // un bruit court pour l’attaque
+    const n=AC.createBufferSource(); const b=AC.createBuffer(1,AC.sampleRate*0.08,AC.sampleRate); const d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/d.length);
+    n.buffer=b; const gn=AC.createGain(); gn.gain.value=0.25; n.connect(gn); gn.connect(g);
+    n.start(t0);
+    g.connect(AC.destination);
+  }catch(e){/* ignore */}
 }
+window.addEventListener('pointerdown',()=>{ if(AC && AC.state==='suspended') AC.resume(); unlocked=true; },{once:true});
 
-// son à la nouvelle commande
-let seen = new Map();
+let seen=new Map();
 function render(list){
-  body.innerHTML = '';
-  if(!list.length){ body.innerHTML = '<tr><td colspan="9" class="muted">Aucune commande sur les dernières 24 h.</td></tr>'; return; }
+  tbody.innerHTML='';
+  if(!list.length){ tbody.innerHTML='<tr><td colspan="9" class="muted">Aucune commande sur les dernières 24 h.</td></tr>'; return; }
   list.forEach(o=>{
-    if(!seen.has(o.id)){ // nouvelle
-      seen.set(o.id,1);
-      try{ bell.currentTime = 0; bell.play().catch(()=>{});}catch{}
-    }
-    body.appendChild(tr(o));
+    if(!seen.has(o.id)){ seen.set(o.id,1); ring(); } // son à la VRAIE nouveauté
+    const tr=document.createElement('tr');
+    const pizzas=(o.basket||o.items||[]).map(it=>`${it.name} × ${it.qty||1}`).join(', ');
+    tr.innerHTML=`
+      <td>${o.when||o.time||''}</td>
+      <td>${o.id||''}</td>
+      <td>${o.name||''}</td>
+      <td>${o.phone||''}</td>
+      <td>${o.slot||''}</td>
+      <td>${pizzas||'-'}</td>
+      <td>${(Number(o.total)||0).toFixed(2).replace('.',',')} €</td>
+      <td><span class="badge ${o.status==='new'?'st-new':o.status==='ready'?'st-ready':o.status==='canceled'?'st-canceled':''}">${o.status||'new'}</span></td>
+      <td class="right">
+        <button class="btn" data-act="ready">Prête</button>
+        <button class="btn" data-act="done">Terminée</button>
+        <button class="btn" data-act="cancel">Annuler</button>
+        <button class="btn red" data-act="del">×</button>
+      </td>`;
+    tr.addEventListener('click',async e=>{
+      const act=e.target?.dataset?.act; if(!act) return;
+      if(act==='del'){ tr.remove(); return; } // suppression locale (ex: démo)
+      try{
+        const url=api.value.trim(); if(!url) return;
+        await fetch(url+'?id='+(o.id||'')+'&action='+act+'&key='+(adm.value||''),{method:'GET',cache:'no-store'});
+        info.textContent='OK';
+      }catch(err){ console.error(err); info.textContent='Erreur action'; }
+    });
+    tbody.appendChild(tr);
   });
 }
 
-// boucle de rafraîchissement (n’efface JAMAIS les lignes existantes)
-async function loop(force=false){
-  const url = apiInput.value.trim(); if(!url){ info.textContent='Renseigne l’URL de l’API'; return; }
+async function loop(){
+  const url=api.value.trim(); if(!url){ info.textContent="Renseigne l’URL de l’API"; return; }
   try{
-    const r = await fetch(url+'?list=1',{cache: 'no-store'});
-    const data = await r.json();
-    if(data && data.ok && Array.isArray(data.orders)){
-      render(data.orders);
-      info.textContent = 'Dernière mise à jour — OK';
-    }else{
-      info.textContent = 'Réponse inattendue';
-    }
-  }catch(e){ info.textContent = 'Erreur réseau'; console.error(e); }
+    const r=await fetch(url+'?list=1',{cache:'no-store'});
+    const data=await r.json();
+    if(data?.ok && Array.isArray(data.orders)){ render(data.orders); info.textContent='Dernière mise à jour — OK'; }
+    else{ info.textContent='Réponse inattendue'; console.warn(data); }
+  }catch(e){ info.textContent='Erreur réseau'; console.error(e); }
 }
-// auto-refresh toutes les 12 s
-setInterval(()=>loop(), 12000);
+
+// UI
+api.value=localStorage.getItem('PA_API')||''; adm.value=localStorage.getItem('PA_ADM')||'';
+$('#save').onclick=()=>{ localStorage.setItem('PA_API',api.value.trim()); localStorage.setItem('PA_ADM',adm.value.trim()); info.textContent='Enregistré.'; };
+$('#refresh').onclick=()=>loop();
+$('#demo').onclick=async ()=>{
+  try{
+    const url=api.value.trim(); if(!url){ info.textContent="Renseigne l’URL de l’API"; return; }
+    await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({
+      demo:true,name:'Test JSONP',phone:'06 00 00 00 00',slot:'19:00',
+      items:[{name:'Margharita',qty:1,price:7.5}],total:7.5,source:'site'
+    })});
+    ring(); // son immédiat quand on clique “Démo”
+    info.textContent='Démo envoyée.';
+    setTimeout(loop,800);
+  }catch(e){ info.textContent='Erreur démo'; console.error(e); }
+};
+
+loop();
+setInterval(loop,12000);
 </script>
 </body>
 </html>
