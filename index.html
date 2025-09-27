@@ -2,269 +2,257 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{
-    --bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6;
-    --green:#1fcf7c; --red:#e55252; --white:#fff; --accent:#ffb54c;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1024px;margin:18px auto;padding:0 14px}
-
-  h1{margin:0 0 12px;font-size:24px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+  :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+  h1{margin:4px 0 12px 0}
+  input,button{font:inherit}
+  input[type=text]{width:100%;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  input[type="text"]{width:100%;max-width:680px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
-  .btn.primary{background:var(--green);color:#001b10;border-color:transparent}
+  .btn{border:1px solid rgba(255,255,255,.25);background:#1a2333;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+  .btn.primary{background:var(--green);color:#001b10;border:none}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
-  .ok{color:var(--green)}
-  .err{color:#ff9a9a}
-
-  table{width:100%;border-collapse:collapse}
-  th,td{border-top:1px solid var(--line);padding:10px;vertical-align:top}
-  th{font-weight:700;text-align:left;color:#dfe8ff}
-  td .chip{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1623}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px;vertical-align:middle}
+  th{font-weight:700;text-align:left}
+  .tag{padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
+  .tag.new{background:#233048}
+  .price{white-space:nowrap}
   .actions .btn{padding:6px 10px}
-
-  /* ====== Responsive : table -> cartes ====== */
-  @media (max-width: 720px){
-    table, thead, tbody, th, td, tr{display:block}
-    thead{display:none}
-    tbody tr{border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0;background:var(--panel)}
-    tbody td{border:none;padding:6px 0}
-    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:2px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:6px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:#36d36a;box-shadow:0 0 6px #36d36a}
+  /* Mobile */
+  @media (max-width:740px){
+    .hide-sm{display:none}
+    table{font-size:14px}
+    .actions .btn{padding:6px 8px}
   }
-
-  /* Bouton son */
-  .sound-toggle{margin-left:auto;display:flex;align-items:center;gap:6px}
-  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623}
+  /* panneau erreurs */
+  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
+  #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Dashboard — PIZZ’AMIGO</h1>
 
-  <div class="panel">
+  <div class="card">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
-      <button id="save" class="btn">Enregistrer</button>
-      <button id="refresh" class="btn">Actualiser</button>
-      <button id="demo" class="btn">Démo</button>
-      <div class="sound-toggle">
-        <span class="muted">Son :</span>
-        <button id="enable-audio" class="pill">🔔 Activer le son</button>
-      </div>
+      <input id="api" type="text" placeholder="URL de l’API Google Apps Script">
+      <input id="adm" type="text" placeholder="Clé admin (facultatif)">
     </div>
-    <div id="status" class="muted" style="margin-top:8px">—</div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="save">Enregistrer</button>
+      <button class="btn" id="refresh">Actualiser</button>
+      <button class="btn" id="demo">Démo</button>
+      <span class="muted" id="status">–</span>
+      <span class="badge" style="margin-left:auto">
+        <button class="btn" id="soundBtn">🔔 Activer le son</button>
+        <label class="muted">Son :</label>
+        <input type="range" min="0" max="1" step="0.05" id="vol" value="0.7" style="width:120px">
+      </span>
+    </div>
   </div>
 
-  <div class="panel" style="margin-top:12px">
-    <table>
+  <div class="card" style="margin-top:12px;overflow:auto">
+    <table id="tbl">
       <thead>
         <tr>
-          <th style="width:110px">Heure</th>
-          <th>ID</th>
-          <th>Client</th>
-          <th>Téléphone</th>
+          <th>Heure</th>
+          <th class="hide-sm">ID</th>
+          <th class="hide-sm">Client</th>
+          <th class="hide-sm">Téléphone</th>
           <th>Horaire</th>
           <th>Pizzas</th>
-          <th style="width:90px">Total</th>
-          <th style="width:80px">Statut</th>
-          <th style="width:220px">Action</th>
+          <th>Total</th>
+          <th>Statut</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
-
-  <!-- Panneau erreurs (anti page blanche) -->
-  <div id="err" class="panel" style="display:none;margin-top:12px;background:#2a1b1b;border-color:#5d2f2f">
-    <b>Erreur JavaScript</b>
-    <pre id="err-msg" style="white-space:pre-wrap;margin:8px 0 0;color:#ffd1d1"></pre>
-  </div>
 </div>
 
+<!-- erreurs JS -->
+<div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
+
 <script>
-/* ====== Anti page blanche ====== */
-function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+/* ===== Anti page blanche ===== */
+function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
+window.addEventListener('error', e=>showErr(e.message+'\\n'+(e.error&&e.error.stack||'')));
 window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ====== State ====== */
-const elApi = document.getElementById('api');
-const elAdm = document.getElementById('adm');
-const elRows = document.getElementById('rows');
-const elStatus = document.getElementById('status');
-const btnEnableAudio = document.getElementById('enable-audio');
+/* ===== State ===== */
+const S = {
+  api: localStorage.getItem('pizz_api') || '',
+  adm: localStorage.getItem('pizz_adm') || 'PIZZAMIGO-ADMIN-123', // <- mets ici EXACTEMENT la clé côté Apps Script
+  orders: new Map(), // id -> order
+  audioReady:false,
+  bell: (() => {
+    // bip cloche très court (WebAudio)
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const ding = () => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type='triangle'; o.frequency.value=880; // aigue court
+      g.gain.value=0; g.gain.linearRampToValueAtTime(+document.getElementById('vol').value, ctx.currentTime+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.35);
+      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.35);
+    };
+    return {ctx, play:ding};
+  })()
+};
 
-let ORDERS = new Map(); // id -> order
-let audioCtx = null;
-let soundEnabled = false;
+document.getElementById('api').value = S.api;
+document.getElementById('adm').value = S.adm;
 
-/* ====== Audio (petite cloche) ====== */
-function initAudio(){
-  if (soundEnabled) return;
-  try{
-    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
-    audioCtx.resume();
-    soundEnabled = true;
-    localStorage.setItem('pizzamigo_sound','1');
-    btnEnableAudio.style.display='none';
-  }catch(e){ console.debug('Audio init error', e); }
+/* ===== Helpers ===== */
+const € = v => Number(v).toFixed(2).replace('.', ',')+' €';
+const fmtTime = iso => {
+  // accepte "19:30" ou Date-like; sors "19:30"
+  if (!iso) return '';
+  if (/^\d{2}:\d{2}$/.test(iso)) return iso;
+  try{ const d = new Date(iso); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  catch{ return String(iso); }
+};
+
+function rowHtml(o){
+  const items = (o.items||o.basket||[]).map(it=>{
+    const sup = it.supplType ? ` (+1€ ${it.supplType})` : '';
+    return `${it.name} × ${it.qty||1}${sup}`;
+  }).join('<br>');
+  return `
+  <tr data-id="${o.id}">
+    <td>${o.time||o.when||''}</td>
+    <td class="hide-sm">${o.id||''}</td>
+    <td class="hide-sm">${o.name||o.client||''}</td>
+    <td class="hide-sm">${o.phone||''}</td>
+    <td>${fmtTime(o.slot||o.horaire||o.when||'')}</td>
+    <td>${items||'-'}</td>
+    <td class="price">${€(o.total||o.total11||0)}</td>
+    <td><span class="tag new">${o.status||'new'}</span></td>
+    <td class="actions">
+      <button class="btn" data-act="ready">Prête</button>
+      <button class="btn" data-act="done">Terminée</button>
+      <button class="btn red" data-act="cancel">Annuler</button>
+      <button class="btn" data-act="remove">×</button>
+    </td>
+  </tr>`;
 }
-btnEnableAudio.addEventListener('click', initAudio);
-if(localStorage.getItem('pizzamigo_sound')==='1'){ setTimeout(initAudio,0); }
 
-function bell(){
-  if(!soundEnabled || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(880, t0);
-  osc.frequency.exponentialRampToValueAtTime(660, t0+0.12);
-  gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(0.5, t0+0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.5);
-  osc.connect(gain).connect(audioCtx.destination);
-  osc.start(t0); osc.stop(t0+0.52);
+/* ===== Rendering ===== */
+function upsertRows(list){
+  const body = document.getElementById('rows');
+  let added = 0;
+  list.forEach(o=>{
+    if(!S.orders.has(o.id)){
+      S.orders.set(o.id, o);
+      body.insertAdjacentHTML('afterbegin', rowHtml(o));
+      added++;
+    }
+  });
+  if(added>0 && S.audioReady) S.bell.play();
 }
 
-/* ====== Helpers ====== */
-const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
-function nowStr(){ const d=new Date(); return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-function api()  { return (elApi.value||'').trim(); }
-function ok(msg){ elStatus.innerHTML = `${nowStr()} — <span class="ok">${msg||'OK'}</span>`; }
-function err(msg){ elStatus.innerHTML = `${nowStr()} — <span class="err">${msg||'Erreur'}</span>`; }
+/* ===== API calls ===== */
+async function apiGet(params){
+  const u = new URL(S.api);
+  Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r = await fetch(u, {method:'GET', cache:'no-store'});
+  const t = await r.text();
+  try{ return JSON.parse(t); } catch{ throw new Error(t); }
+}
 
-/* Robust parser: JSON si possible, sinon texte */
-async function parseRes(res){
-  let txt = '';
+async function apiPost(obj){
+  // IMPORTANT: text/plain pour éviter CORS des Apps Script
+  const r = await fetch(S.api, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(obj)
+  });
+  const t = await r.text();
+  try{ return JSON.parse(t); } catch{ throw new Error(t); }
+}
+
+/* ===== Actions ===== */
+async function refreshNow(){
+  if(!S.api){ alert('Renseigne l’URL de l’API.'); return; }
   try{
-    const ct = res.headers.get('content-type')||'';
-    if(ct.includes('application/json')) return await res.json();
-    txt = await res.text();
-    try{ return JSON.parse(txt); }catch(_){}
-    return { ok: /"ok"\s*:\s*true/.test(txt) || /status"\s*:\s*"up"/.test(txt), raw: txt };
+    const data = await apiGet({list:'today'});
+    if(!data.ok) throw new Error(data.error||'Réponse invalide');
+    upsertRows(data.orders||[]);
+    document.getElementById('status').textContent = new Date().toTimeString().slice(0,8)+' — OK';
   }catch(e){
-    return { ok:false, error:String(e), raw:txt };
+    document.getElementById('status').textContent = 'Erreur réseau';
+    showErr(String(e));
   }
 }
 
-/* ====== Render ====== */
-function renderTable(list){
-  const prevIds = new Set(ORDERS.keys());
-  elRows.innerHTML = '';
-
-  list.forEach(o=>{
-    ORDERS.set(o.id, o);
-
-    const tr = document.createElement('tr');
-    const td = (label, html) => {
-      const c = document.createElement('td');
-      c.setAttribute('data-label', label);
-      c.innerHTML = html;
-      return c;
-    };
-
-    tr.appendChild(td('Heure', new Date(o.date||Date.now()).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})));
-    tr.appendChild(td('ID', o.id||''));
-    tr.appendChild(td('Client', o.name||''));
-    tr.appendChild(td('Téléphone', o.phone||''));
-    tr.appendChild(td('Horaire', String(o.slot||'').replace(':','h')));
-    // pizzas + suppléments
-    const pizzas = Array.isArray(o.basket)? o.basket.map(it=>{
-      const sup = it.suppl && Number(it.suppl)>0 ? ` (+1€ ${it.supplType||'suppl.'})` : '';
-      return `${it.name} × ${it.qty||1}${sup}`;
-    }).join('<br>') : (o.pizzas||o.items||'');
-    tr.appendChild(td('Pizzas', pizzas || ''));
-    tr.appendChild(td('Total', `${euro(o.total||0)} €`));
-    tr.appendChild(td('Statut', `<span class="chip">${o.status||'new'}</span>`));
-
-    const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    [['Prête','ready'],['Terminée','done'],['Annuler','canceled']].forEach(([lbl,val])=>{
-      const b=document.createElement('button'); b.className='btn'; b.textContent=lbl;
-      b.onclick=()=>updateStatus(o.id, val);
-      act.appendChild(b);
-    });
-    const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer';
-    x.onclick=()=>{ tr.remove(); ORDERS.delete(o.id); };
-    act.appendChild(x);
-    tr.appendChild(act);
-
-    elRows.appendChild(tr);
-  });
-
-  const newOnes = list.filter(o=>!prevIds.has(o.id));
-  if(newOnes.length>0) bell();
-}
-
-/* ====== API calls ====== */
-async function getList(){
-  try{
-    const url = api();
-    if(!url) return err('Renseigne l’URL de l’API');
-    const r = await fetch(url+'?list=1',{cache:'no-store'});
-    const data = await parseRes(r);
-    if(!r.ok || !data) throw new Error('HTTP '+r.status);
-    renderTable(Array.isArray(data.orders)? data.orders : (Array.isArray(data)||data.orders===undefined? (data.orders||[]) : []));
-    ok('OK');
-  }catch(e){ console.error(e); err('Erreur réseau'); }
-}
-
 async function sendDemo(){
+  if(!S.api){ alert('Renseigne l’URL de l’API.'); return; }
   try{
-    const url = api();
-    const r = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({demo:1})
-    });
-    const data = await parseRes(r);
-    if(!r.ok || data.ok===false) throw new Error('Echec envoi');
-    ok('Démo ajoutée');
-    setTimeout(getList, 1000);
-  }catch(e){ console.error(e); alert("Échec d’envoi de la démo."); err('Échec démo'); }
+    const demo = {
+      adminKey: S.adm,          // <-- vérifie que ça matche la clé côté Apps Script
+      demo: true,               // flag côté serveur
+      name: 'Test JSONP',
+      phone: '600000000',
+      slot: '19:30',
+      items: [{name:'Margharita', qty:1, price:8.50, supplType:'viande', supplPrice:1}],
+      total: 8.50,
+      source: 'site'
+    };
+    const res = await apiPost(demo);
+    if(!res.ok) throw new Error(res.error||'Échec envoi démo');
+    await refreshNow();
+  }catch(e){
+    alert('Échec d’envoi de la démo.');
+    showErr(String(e));
+  }
 }
 
-async function updateStatus(id, status){
-  try{
-    const url = api();
-    const body = { id, status, admin: (elAdm.value||'').trim() || undefined };
-    const r = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify(body)
-    });
-    const data = await parseRes(r);
-    if(!r.ok || data.ok===false) throw new Error('Echec statut');
-    ok('Statut mis à jour');
-    setTimeout(getList, 600);
-  }catch(e){ console.error(e); alert("Échec de mise à jour du statut."); err('Échec statut'); }
+function tableClick(e){
+  const btn = e.target.closest('button[data-act]'); if(!btn) return;
+  const tr = e.target.closest('tr'); const id = tr?.dataset.id; if(!id) return;
+  const act = btn.dataset.act;
+  if(act==='remove'){ S.orders.delete(id); tr.remove(); return; }
+  // changement de statut -> POST
+  apiPost({adminKey:S.adm, setStatus:true, id, status: act})
+    .then(r=>{
+      if(!r.ok) throw new Error(r.error||'setStatus fail');
+      tr.querySelector('.tag').textContent = act;
+    })
+    .catch(err=>showErr(String(err)));
 }
 
-/* ====== Hooks & init ====== */
-document.getElementById('save').onclick = ()=>{
-  localStorage.setItem('pizzamigo_api', elApi.value.trim());
-  localStorage.setItem('pizzamigo_adm', elAdm.value.trim());
-  ok('Paramètres enregistrés');
+/* ===== Polling ===== */
+let timer=null;
+function startPolling(){ stopPolling(); timer=setInterval(refreshNow, 5000);}
+function stopPolling(){ if(timer) clearInterval(timer); }
+
+/* ===== UI wiring ===== */
+document.getElementById('save').onclick=()=>{
+  S.api = document.getElementById('api').value.trim();
+  S.adm = document.getElementById('adm').value.trim()||'PIZZAMIGO-ADMIN-123';
+  localStorage.setItem('pizz_api', S.api);
+  localStorage.setItem('pizz_adm', S.adm);
+  document.getElementById('status').textContent='Paramètres enregistrés';
 };
-document.getElementById('refresh').onclick = getList;
-document.getElementById('demo').onclick = sendDemo;
+document.getElementById('refresh').onclick=refreshNow;
+document.getElementById('demo').onclick=sendDemo;
+document.getElementById('tbl').addEventListener('click', tableClick);
+document.getElementById('vol').oninput=()=>{}; // volume lu à la volée
+document.getElementById('soundBtn').onclick=async ()=>{
+  try{ await S.bell.ctx.resume(); S.audioReady=true; document.getElementById('soundBtn').disabled=true; document.getElementById('soundBtn').textContent='🔔 Son activé'; }
+  catch(e){ showErr(String(e)); }
+};
 
-(function boot(){
-  elApi.value = localStorage.getItem('pizzamigo_api') || elApi.value;
-  elAdm.value = localStorage.getItem('pizzamigo_adm') || '';
-  if(localStorage.getItem('pizzamigo_sound')==='1'){ btnEnableAudio.style.display='none'; }
-  getList();
-  setInterval(getList, 10000);
-})();
+/* ===== Boot ===== */
+refreshNow(); startPolling();
 </script>
 </body>
 </html>
