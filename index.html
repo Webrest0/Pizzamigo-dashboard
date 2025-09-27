@@ -1,113 +1,200 @@
-/***** PIZZ'AMIGO API — v2 *****/
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — PIZZ’AMIGO</title>
+  <style>
+    :root{
+      --bg:#0e1116; --panel:#161b22; --ink:#e6edf3; --muted:#a9b1ba;
+      --line:#2d333b; --brand:#2ea043; --warn:#d29922; --danger:#f85149;
+      --pill:#30363d; --pill-in:#0d1117;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;
+      color:var(--ink); background:radial-gradient(60rem 60rem at 10% -10%, #1b2330 0%, var(--bg) 45%);
+    }
+    .wrap{max-width:1100px; margin:28px auto; padding:0 16px}
+    h1{margin:0 0 12px; font-size:22px; letter-spacing:.4px}
+    .bar{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px;
+      position:sticky; top:8px; z-index:5; box-shadow:0 8px 20px rgba(0,0,0,.15);
+    }
+    label{font-size:12px; color:var(--muted)}
+    .row{display:flex; gap:8px; width:100%; flex-wrap:wrap}
+    .field{display:flex; flex-direction:column; gap:6px; min-width:280px; flex:1 1 360px}
+    input{
+      background:var(--pill-in); border:1px solid var(--line); color:var(--ink);
+      padding:10px 12px; border-radius:8px; font-size:14px; width:100%;
+    }
+    .btn{
+      border:1px solid var(--line); background:var(--pill);
+      color:var(--ink); padding:10px 14px; border-radius:8px; cursor:pointer;
+      font-weight:600; transition:.15s; user-select:none;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn.save{background:linear-gradient(180deg,#1f6feb,#1158c7)}
+    .btn.refresh{background:linear-gradient(180deg,#353b44,#262b33)}
+    .btn.demo{background:linear-gradient(180deg,#238636,#1f7a31)}
+    .status{
+      margin-left:auto; font-size:12px; padding:6px 10px; border-radius:999px;
+      background:#262b33; color:#9fbafc; border:1px solid #3b4552; white-space:nowrap
+    }
+    .card{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+    table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+    thead th{
+      text-align:left; font-size:12px; color:var(--muted); background:#0f141b;
+      padding:10px 12px; border-bottom:1px solid var(--line); position:sticky; top:60px; z-index:2;
+    }
+    tbody td{border-top:1px solid var(--line); padding:10px 12px; vertical-align:top}
+    .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--pill); font-size:12px; color:var(--ink)}
+    .price{font-weight:700}
+    .st-new{background:#0f1a12; border-color:#214d2e; color:#4ae38a}
+    .st-ready{background:#1b1a0f; border-color:#4d4721; color:#d6b04a}
+    .st-done{background:#0f141a; border-color:#21435a; color:#7ac6ff}
+    .st-cancel{background:#1a0f10; border-color:#5a2130; color:#ff9aaa}
+    .act{display:flex; gap:6px; flex-wrap:wrap}
+    .small{font-size:12px; color:var(--muted)}
+    .btn.sm{padding:6px 10px; font-weight:600}
+    .btn.ready{background:linear-gradient(180deg,#b8871a,#9d7418)}
+    .btn.done{background:linear-gradient(180deg,#2563eb,#1e4ecb)}
+    .btn.cancel{background:linear-gradient(180deg,#b4232e,#931a24)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Dashboard — PIZZ’AMIGO</h1>
 
-// Nom de l'onglet
-const SHEET_NAME = 'Commandes';
+    <div class="bar">
+      <div class="row">
+        <div class="field">
+          <label>API</label>
+          <input id="api" placeholder="https://script.google.com/macros/s/.../exec" />
+          <div class="small">Colle l’URL <b>/exec</b> de l’Apps Script.</div>
+        </div>
+        <div class="field" style="max-width:360px">
+          <label>Clé admin (facultatif)</label>
+          <input id="adm" placeholder="ex: PIZZAMIGO-ADMIN-123" />
+          <div class="small">Stockée localement.</div>
+        </div>
+      </div>
+      <button class="btn save" id="save">Enregistrer</button>
+      <button class="btn refresh" id="refresh">Actualiser</button>
+      <button class="btn demo" id="demo">Démo</button>
+      <span class="status" id="status">—</span>
+    </div>
 
-// Colonnes attendues (en-têtes en ligne 1 du Sheet)
-const HEADERS = [
-  'date',      // A
-  'id',        // B
-  'name',      // C
-  'phone',     // D
-  'slot',      // E
-  'panier',    // F (JSON string)
-  'total',     // G (nombre)
-  'status',    // H (new, ready, done, canceled)
-  'source'     // I (site, demo, etc.)
-];
+    <div class="card">
+      <table>
+        <thead>
+        <tr>
+          <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th>
+          <th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="9" class="small">Aucune commande sur les dernières 24 h.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-/* ------------ utils ------------- */
-function _sheet() {
-  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
-  if (!sh) throw new Error(`Feuille "${SHEET_NAME}" introuvable.`);
-  return sh;
-}
+  <!-- TOUT le JavaScript est **dans** cette balise script -->
+  <script>
+    const $ = s=>document.querySelector(s);
+    const $tbody = $('#tbody'), $status = $('#status');
+    const STATE = new Map(); // id -> order
 
-function _respond(obj, eParam) {
-  const out = ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-  return out;
-}
+    // bip 5s fort
+    function beep(){
+      try{
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type='square'; o.frequency.value=740; g.gain.value=0.25;
+        o.connect(g); g.connect(ctx.destination); o.start();
+        setTimeout(()=>{g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+.1);o.stop(ctx.currentTime+.12);},5000);
+      }catch(e){}
+    }
+    const fmt€ = n => (Number(n)||0).toFixed(2).replace('.',',')+' €';
+    const nowHHMM = () => new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 
-function _todayYYYYMMDD() {
-  const tz = Session.getScriptTimeZone() || 'Europe/Paris';
-  const d = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-  return d; // ex: 2025-09-27
-}
-
-/* ----------- GET : liste commandes du jour ----------- */
-function doGet(e) {
-  try {
-    const p = e && e.parameter ? e.parameter : {};
-    if (p.ping) return _respond({ ok: true, status: 'up' });
-
-    const sh = _sheet();
-    const lastRow = sh.getLastRow();
-    const lastCol = sh.getLastColumn();
-    if (lastRow < 2) return _respond({ ok: true, orders: [] });
-
-    // lecture rapide sans la ligne d'en-têtes
-    const values = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
-    const idx = {}; HEADERS.forEach((h, i) => idx[h] = i); // A->0, B->1, ...
-
-    const today = _todayYYYYMMDD();
-
-    // Ne filtre QUE sur la date du jour (pas de filtre "source" ni "status")
-    const orders = values
-      .filter(r => String(r[idx['date']]).startsWith(today))
-      .map(r => {
-        let basket = [];
-        try { basket = JSON.parse(String(r[idx['panier']]) || '[]'); } catch(_){}
-        return {
-          id:      String(r[idx['id']] || ''),
-          when:    String(r[idx['date']] || ''),   // date/heure brute
-          name:    String(r[idx['name']] || ''),
-          phone:   String(r[idx['phone']] || ''),
-          slot:    String(r[idx['slot']] || ''),   // 18:00, 18:30, ...
-          basket,                                 // tableau [{label, qty, price, ...}]
-          total:   Number(r[idx['total']] || 0),
-          status:  String(r[idx['status']] || 'new'),
-          source:  String(r[idx['source']] || '')
-        };
+    function rowHtml(o){
+      const pizzas = o.items?.map(p=>`${p.name}${p.suppl?` (+${p.suppl} suppl.)`:''} × ${p.qty}`).join(' · ') || o.pizzas || '';
+      const tag = s => s==='nouvelle'?'st-new':s==='prête'?'st-ready':s==='terminée'?'st-done':s==='annulée'?'st-cancel':'';
+      return `
+        <tr data-id="${o.id}">
+          <td>${o.when||nowHHMM()}</td>
+          <td><span class="pill">${o.id}</span></td>
+          <td>${o.name||''}</td>
+          <td>${o.phone||''}</td>
+          <td><span class="pill">${o.slot||o.time||''}</span></td>
+          <td>${pizzas}</td>
+          <td class="price">${fmt€(o.total||o.total_eur||0)}</td>
+          <td><span class="pill ${tag(o.status||'nouvelle')}">${o.status||'nouvelle'}</span></td>
+          <td class="act">
+            <button class="btn sm ready" data-act="ready">Prête</button>
+            <button class="btn sm done" data-act="done">Terminée</button>
+            <button class="btn sm cancel" data-act="cancel">Annuler</button>
+          </td>
+        </tr>`;
+    }
+    function render(list){
+      if(!list?.length){ $tbody.innerHTML = '<tr><td colspan="9" class="small">Aucune commande sur les dernières 24 h.</td></tr>'; return; }
+      $tbody.innerHTML = list.map(rowHtml).join('');
+      $tbody.querySelectorAll('button[data-act]').forEach(btn=>{
+        btn.addEventListener('click', async e=>{
+          const tr = e.currentTarget.closest('tr'); const id = tr.dataset.id;
+          const act = e.currentTarget.dataset.act;
+          const pill = tr.querySelector('td:nth-child(8) .pill');
+          pill.textContent = act==='ready'?'prête':act==='done'?'terminée':'annulée';
+          pill.className = 'pill ' + (act==='ready'?'st-ready':act==='done'?'st-done':'st-cancel');
+          const api=$('#api').value.trim(); if(!api) return;
+          const admin=$('#adm').value.trim();
+          try{ await fetch(api+`?act=${act}&id=${encodeURIComponent(id)}${admin?`&admin=${encodeURIComponent(admin)}`:''}`);}
+          catch(_){}
+        });
       });
+    }
 
-    return _respond({ ok: true, orders });
+    async function load(){
+      const api = $('#api').value.trim();
+      if(!api){ $status.textContent='Erreur: renseigne l’URL de l’API'; return; }
+      $status.textContent='Chargement…';
+      try{
+        const r = await fetch(api+'?orders=1',{cache:'no-store'});
+        const j = await r.json();
+        if(!j.ok) throw new Error(j.error||'Réponse invalide');
+        const orders = j.orders||[];
+        let hasNew=false; for(const o of orders){ if(!STATE.has(o.id)) hasNew=true; STATE.set(o.id,o); }
+        if(hasNew) beep();
+        render(orders);
+        $status.textContent=`Dernière mise à jour — ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — OK`;
+      }catch(err){
+        $status.textContent='Erreur réseau';
+        console.error(err);
+      }
+    }
 
-  } catch (err) {
-    return _respond({ ok: false, error: String(err) });
-  }
-}
+    function addDemo(){
+      const id='DEMO-'+Math.random().toString(16).slice(2,6).toUpperCase();
+      const demo={id,when:nowHHMM(),name:'Test JSONP',phone:'06 00 00 00 00',slot:'19:00',items:[{name:'Margharita',qty:1}],total_eur:7.5,status:'nouvelle'};
+      const list=[demo,...Array.from(STATE.values())]; STATE.set(id,demo); render(list); beep();
+      $status.textContent=`Dernière mise à jour — ${nowHHMM()} — Démo ajoutée`;
+      setTimeout(()=>{STATE.delete(id); render(Array.from(STATE.values()));},5000);
+    }
 
-/* ----------- POST : ajout d’une commande ----------- */
-function doPost(e) {
-  try {
-    const body = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
-    const data = JSON.parse(body);
-
-    // champs attendus côté site :
-    // name, phone, slot, panier (array), total, source ('site')
-    const now = new Date();
-    const tz = Session.getScriptTimeZone() || 'Europe/Paris';
-    const when = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss'); // pour la colonne A
-    const id   = 'PZ-' + Utilities.getUuid().slice(0,8).toUpperCase(); // colonne B
-
-    const sh = _sheet();
-    sh.appendRow([
-      when,                // date
-      id,                  // id
-      data.name || '',     // name
-      data.phone || '',    // phone
-      data.slot || '',     // slot
-      JSON.stringify(data.panier || []), // panier (JSON)
-      Number(data.total || 0),           // total
-      'new',               // status par défaut
-      String(data.source || 'site')      // source
-    ]);
-
-    return _respond({ ok: true, id });
-
-  } catch (err) {
-    return _respond({ ok: false, error: String(err) });
-  }
-}
+    // init + stockage local
+    (function(){
+      const sApi=localStorage.getItem('pizzamigo_api')||'', sAdm=localStorage.getItem('pizzamigo_admin')||'';
+      $('#api').value=sApi; $('#adm').value=sAdm;
+      $('#save').addEventListener('click',()=>{localStorage.setItem('pizzamigo_api',$('#api').value.trim());localStorage.setItem('pizzamigo_admin',$('#adm').value.trim());$status.textContent='Enregistré';});
+      $('#refresh').addEventListener('click',load);
+      $('#demo').addEventListener('click',addDemo);
+      if(sApi) load();
+    })();
+  </script>
+</body>
+</html>
