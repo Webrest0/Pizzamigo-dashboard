@@ -1,274 +1,161 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{
-    --bg:#0b0f14;--panel:#101722;--line:#273149;--muted:#b8c2d6;
-    --green:#1fcf7c;--red:#e55252;--white:#ffffff;--accent:#ffb54c;
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:#0b0f14;color:#fff}
+  .wrap{max-width:1100px;margin:auto;padding:14px}
+  h1{margin:0 0 10px;font-size:24px}
+  input,button{padding:8px;border-radius:6px;border:1px solid #283149;background:#101722;color:#fff}
+  button{cursor:pointer}
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:.95rem}
+  th,td{border:1px solid #283149;padding:6px 8px;text-align:left}
+  th{background:#101722}
+  tr:nth-child(even){background:#161d29}
+  .btn{padding:4px 8px;border-radius:6px;border:1px solid #444;background:#222;color:#fff;cursor:pointer}
+  .btn:hover{background:#333}
+  .status{padding:2px 6px;border-radius:6px;font-size:.8rem}
+  .new{background:#1fcf7c;color:#001b10}
+  .ready{background:#ffb54c;color:#000}
+  .done{background:#36a2ff;color:#000}
+  .cancel{background:#e55252;color:#fff}
+  @media(max-width:700px){
+    table, thead, tbody, th, td, tr{display:block}
+    th{display:none}
+    td{border:none;border-bottom:1px solid #283149}
+    tr{margin-bottom:10px}
   }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:18px auto;padding:0 12px}
-  h1{margin:0 0 12px;font-size:22px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  input[type="text"]{flex:1;min-width:260px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:8px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
-  .btn.primary{background:var(--green);color:#071d12;border-color:transparent}
-  .btn.ghost{opacity:.85}
-  .btn.red{border-color:#ff9b9b;color:#ffbebe}
-  .hint{color:var(--muted);font-size:.9rem}
-  .status-ok{color:#7dffb1}
-  .status-err{color:#ffb3b3}
-
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{border-top:1px solid var(--line);padding:10px 8px;text-align:left;font-size:.95rem}
-  th{font-weight:700;color:#dfe7fb}
-  td.num{text-align:right;white-space:nowrap}
-  td.actions{white-space:nowrap}
-  .pill{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:.85rem}
-  .pill.new{background:#13221a;color:#8bffc2;border-color:#234}
-  .pill.ready{background:#231c0f;color:#ffd391;border-color:#44361c}
-  .pill.done{background:#17202a;color:#a8d5ff;border-color:#294}
-  .pill.canceled{background:#2a1717;color:#ffb7b7;border-color:#542}
-
-  /* Mobile first */
-  @media (max-width:760px){
-    .hide-sm{display:none}
-    th:nth-child(3), td:nth-child(3){display:none} /* client */
-    th:nth-child(4), td:nth-child(4){display:none} /* phone */
-    th:nth-child(6), td:nth-child(6){display:none} /* pizzas text long */
-  }
-
-  /* panneau erreur JS discret */
-  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;
-       padding:10px 12px;display:none;z-index:999}
-  #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Dashboard — PIZZ’AMIGO</h1>
 
-  <div class="card">
-    <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API (exec)" />
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)" />
-      <button class="btn" id="save">Enregistrer</button>
-      <button class="btn" id="refresh">Actualiser</button>
-      <button class="btn" id="demo">Démo</button>
-      <span id="last" class="hint">Dernière mise à jour — <span id="last-val">—</span></span>
-      <span id="net" class="hint status-err hide-sm"></span>
-    </div>
+  <div class="row">
+    <input id="api-url" placeholder="URL du script Google Apps" style="flex:1"/>
+    <input id="admin-key" placeholder="Clé admin (facultatif)" style="flex:1"/>
+    <button onclick="saveCfg()">Enregistrer</button>
+    <button onclick="refresh()">Actualiser</button>
+    <button onclick="sendDemo()">Démo</button>
   </div>
 
-  <div class="card" style="margin-top:10px">
-    <table id="tbl">
-      <thead>
-        <tr>
-          <th>Heure</th>
-          <th class="hide-sm">ID</th>
-          <th>Client</th>
-          <th class="hide-sm">Téléphone</th>
-          <th>Horaire</th>
-          <th>Pizzas</th>
-          <th class="num">Total</th>
-          <th>Statut</th>
-          <th class="actions">Action</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="9" class="hint" style="text-align:center">Aucune commande sur les dernières 24 h.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <div id="status">Dernière mise à jour — en attente…</div>
+
+  <table>
+    <thead>
+      <tr><th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th><th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th>Action</th></tr>
+    </thead>
+    <tbody id="orders"></tbody>
+  </table>
 </div>
 
-<!-- bip « cloche » très court (500 ms) -->
-<audio id="bell" preload="auto">
-  <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQAA" type="audio/mp3">
-</audio>
-
-<!-- Panneau erreurs -->
-<div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
+<audio id="ding" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" preload="auto"></audio>
 
 <script>
-/* ===== Anti page blanche : capter erreurs ===== */
-function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
-window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
+let CFG={};
+function loadCfg(){
+  try{CFG=JSON.parse(localStorage.pizzacfg||"{}");}catch{CFG={}}
+  document.getElementById('api-url').value=CFG.api||"";
+  document.getElementById('admin-key').value=CFG.key||"";
+}
+function saveCfg(){
+  CFG.api=document.getElementById('api-url').value.trim();
+  CFG.key=document.getElementById('admin-key').value.trim();
+  localStorage.pizzacfg=JSON.stringify(CFG);
+}
+function getApi(){return document.getElementById('api-url').value.trim();}
 
-const LS = {
-  get api(){ return localStorage.getItem('api') || '' },
-  set api(v){ localStorage.setItem('api', v) },
-  get adm(){ return localStorage.getItem('adm') || '' },
-  set adm(v){ localStorage.setItem('adm', v) },
-  get seen(){ return JSON.parse(localStorage.getItem('seen')||'[]') },
-  set seen(v){ localStorage.setItem('seen', JSON.stringify(v)) },
-};
-const rowsEl = document.getElementById('rows');
-const lastEl = document.getElementById('last-val');
-const netEl  = document.getElementById('net');
-const bell   = document.getElementById('bell');
-
-function euro(v){return Number(v||0).toFixed(2).replace('.',',')+' €';}
-function nowHHMM(){const d=new Date();return d.toTimeString().slice(0,5);}
-
-function setStatus(text, ok=true){ lastEl.textContent = text; netEl.textContent = ok?'OK':'Erreur réseau'; netEl.className = 'hint ' + (ok?'status-ok':'status-err'); }
-
-/* ===== RENDER ===== */
-const state = { items: new Map() }; // id -> item
-
-function rowHtml(o){
-  return `<tr data-id="${o.id}">
-    <td>${o.when || nowHHMM()}</td>
-    <td class="hide-sm">${o.id}</td>
-    <td>${o.name||'-'}</td>
-    <td class="hide-sm">${o.phone||'-'}</td>
-    <td>${o.slot||'-'}</td>
-    <td>${o.pizzas||'-'}</td>
-    <td class="num">${euro(o.total)}</td>
-    <td><span class="pill ${o.status||'new'}">${o.status||'new'}</span></td>
-    <td class="actions">
-      <button class="btn ghost act" data-act="ready">Prête</button>
-      <button class="btn ghost act" data-act="done">Terminée</button>
-      <button class="btn ghost act" data-act="canceled">Annuler</button>
-      <button class="btn red del"  title="Supprimer">✖</button>
-    </td>
-  </tr>`;
+/* === format horaire HH:MM === */
+function fmtTime(v){
+  if(Object.prototype.toString.call(v)==="[object Date]"&&!isNaN(v)){
+    return v.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  }
+  if(typeof v==="string"){
+    const m=v.match(/(\d{1,2})[:h](\d{2})/i);
+    if(m) return `${m[1].padStart(2,"0")}:${m[2]}`;
+  }
+  return v||"";
 }
 
-function mountRow(o, playSound){
-  // déjà affiché ?
-  if (state.items.has(o.id)) return;
-  const tmp = document.createElement('tbody');
-  tmp.innerHTML = rowHtml(o);
-  const tr = tmp.firstElementChild;
-  // actions
-  tr.querySelectorAll('.act').forEach(b=>{
-    b.onclick=()=> updateStatus(o.id, b.dataset.act);
+let lastIds=new Set();
+
+/* === Rendu des commandes === */
+function render(list){
+  const tb=document.getElementById('orders'); tb.innerHTML="";
+  list.forEach(o=>{
+    const tr=document.createElement("tr");
+    const id=o.id||"";
+    const hor=fmtTime(o.slot||o.horaire);
+    tr.innerHTML=`
+      <td>${hor}</td>
+      <td>${id}</td>
+      <td>${o.name||""}</td>
+      <td>${o.phone||""}</td>
+      <td>${hor}</td>
+      <td>${(o.items||[]).map(i=>i.name+" x"+i.qty).join(", ")}</td>
+      <td>${o.total?o.total.toFixed(2)+" €":""}</td>
+      <td><span class="status ${o.status}">${o.status||""}</span></td>
+      <td>
+        <button class="btn" onclick="setStatus('${id}','ready')">Prête</button>
+        <button class="btn" onclick="setStatus('${id}','done')">Terminée</button>
+        <button class="btn" onclick="setStatus('${id}','cancel')">Annuler</button>
+        <button class="btn" onclick="del('${id}')">✖</button>
+      </td>`;
+    tb.appendChild(tr);
+    if(!lastIds.has(id)){document.getElementById('ding').play();}
+    lastIds.add(id);
   });
-  tr.querySelector('.del').onclick=()=> removeRow(o.id);
-  // insérer en haut
-  if (rowsEl.firstElementChild && rowsEl.firstElementChild.children.length>1) {
-    rowsEl.insertBefore(tr, rowsEl.firstElementChild);
-  } else {
-    rowsEl.innerHTML=''; rowsEl.appendChild(tr);
-  }
-  state.items.set(o.id, o);
-  if (playSound) { try{ bell.currentTime=0; bell.play(); }catch{} }
 }
 
-function removeRow(id){
-  const tr = rowsEl.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-  if (tr) tr.remove();
-  state.items.delete(id);
-  const seen = LS.seen.filter(x=>x!==id);
-  LS.seen = seen;
-  if (!rowsEl.children.length){
-    rowsEl.innerHTML = `<tr><td colspan="9" class="hint" style="text-align:center">Aucune commande sur les dernières 24 h.</td></tr>`;
-  }
-}
-
-function updateStatus(id, s){
-  const tr = rowsEl.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-  if (!tr) return;
-  const pill = tr.querySelector('.pill');
-  pill.className = 'pill '+s;
-  pill.textContent = s;
-}
-
-/* ===== API CALLS ===== */
-function apiUrl(){ return (document.getElementById('api').value||'').trim(); }
-
-async function ping(){
+/* === Récupération commandes === */
+async function refresh(){
   try{
-    const r = await fetch(apiUrl()+'?ping=1', {method:'GET', cache:'no-store'});
-    const t = await r.text();
-    if (/ok/i.test(t)) { setStatus('— OK', true); return true; }
-    setStatus('— Erreur', false); return false;
-  }catch(e){ setStatus('— Erreur réseau', false); return false; }
-}
-
-async function loadToday(){
-  if (!apiUrl()) { setStatus("— Renseigne l’URL de l’API", false); return; }
-  try{
-    const r = await fetch(apiUrl()+'?list=1', {method:'GET', cache:'no-store'});
-    const j = await r.json(); // {ok:true, orders:[...]}
-    if (!j.ok) throw new Error('Réponse invalide');
-    // ne PAS effacer -> n’ajouter que les nouvelles
-    const seen = LS.seen;
-    let added = 0;
-    j.orders.forEach(o=>{
-      // support panier string/json
-      let pizzas = '';
-      try{
-        const arr = Array.isArray(o.basket) ? o.basket :
-                    (o.items ? o.items :
-                      JSON.parse(String(o.basket||'[]')));
-        pizzas = arr.map(x=>`${x.name} × ${x.qty}`).join(', ');
-      }catch{ pizzas = String(o.pizzas||''); }
-      const rec = {
-        id:o.id, when:o.when, name:o.name, phone:o.phone, slot:o.slot,
-        pizzas, total:o.total, status:o.status||'new'
-      };
-      mountRow(rec, !seen.includes(o.id)); // son si jamais vu
-      if (!seen.includes(o.id)) { seen.push(o.id); added++; }
-    });
-    if (added>0) LS.seen = seen;
-    setStatus('— OK', true);
-  }catch(err){
-    console.error(err);
-    setStatus('— Erreur réseau', false);
+    const res=await fetch(getApi()+"?mode=list");
+    const txt=await res.text();
+    const data=JSON.parse(txt);
+    render(data||[]);
+    document.getElementById('status').textContent="Dernière mise à jour — OK";
+  }catch(e){
+    document.getElementById('status').textContent="Erreur réseau";
+    console.error(e);
   }
 }
 
+/* === Démo === */
 async function sendDemo(){
-  if (!apiUrl()) { alert("Ajoute l’URL de l’API d’abord."); return; }
   try{
-    const demo = {
-      name: "Test JSONP",
-      phone: "0600000000",
-      slot: "19:00",
-      note: "Démo",
-      items: [{name:"Margharita", qty:1, price:7.5}],
-      total: 7.5,
-      source: "demo"
-    };
-    // L’API attend du text/plain
-    const r = await fetch(apiUrl(), {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify(demo)
-    });
-    const txt = await r.text(); let j={};
-    try{ j = JSON.parse(txt);}catch{ j={ok:false, raw:txt}; }
-    if (!r.ok || !j.ok) throw new Error('API démo refusée');
-    setStatus('— Démo envoyée, chargement…', true);
-    setTimeout(loadToday, 500); // récupère après écriture
-  }catch(err){
-    console.error(err);
-    setStatus('— Erreur réseau', false);
-    alert("Échec d’envoi de la démo.");
-  }
+    const url=getApi(); if(!url) throw new Error("Pas d’URL API");
+    const res=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({demo:true})});
+    const txt=await res.text(); let data;
+    try{data=JSON.parse(txt);}catch{data={ok:false,raw:txt};}
+    if(!res.ok||!data.ok) throw new Error("Réponse API invalide");
+    await refresh();
+  }catch(err){alert("Échec d’envoi de la démo.");console.error(err);}
 }
 
-/* ===== BOOT ===== */
-document.getElementById('api').value = LS.api;
-document.getElementById('adm').value = LS.adm;
-document.getElementById('save').onclick = ()=>{
-  LS.api = apiUrl(); LS.adm = (document.getElementById('adm').value||'').trim();
-  setStatus('— Sauvé', true);
-};
-document.getElementById('refresh').onclick = loadToday;
-document.getElementById('demo').onclick = sendDemo;
+/* === Changer statut === */
+async function setStatus(id,status){
+  try{
+    const url=getApi(); if(!url) return;
+    await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({id,status,key:CFG.key})});
+    refresh();
+  }catch(e){console.error(e);}
+}
 
-// petit poll qui n’efface rien : ajoute seulement les nouvelles
-setInterval(loadToday, 8000);
-ping().then(ok=> ok && loadToday());
+/* === Supprimer === */
+async function del(id){
+  if(!confirm("Supprimer la commande "+id+" ?")) return;
+  try{
+    const url=getApi(); if(!url) return;
+    await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({id,delete:true,key:CFG.key})});
+    refresh();
+  }catch(e){console.error(e);}
+}
+
+loadCfg(); refresh(); setInterval(refresh,15000);
 </script>
 </body>
 </html>
