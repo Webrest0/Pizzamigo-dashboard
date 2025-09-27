@@ -1,265 +1,113 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dashboard — PIZZ’AMIGO</title>
-<style>
-  :root{
-    --bg:#0f1217; --panel:#141a22; --border:#2a3441; --text:#e7edf5;
-    --muted:#a8b3c2; --accent:#4dd07c; --warn:#ffb34d; --danger:#ff6b6b;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:980px;margin:28px auto;padding:0 14px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  input,button{height:38px;border-radius:8px;border:1px solid var(--border);background:#0c1117;color:var(--text);padding:0 12px}
-  input{flex:1;min-width:220px}
-  button{cursor:pointer}
-  .btn{background:#1a232e}
-  .btn:hover{background:#202b38}
-  .btn-accent{background:var(--accent);border-color:#2ca862;color:#051a0e}
-  .btn-accent:hover{filter:brightness(0.95)}
-  .btn-warn{background:#2a2320;border-color:#604133;color:#ffd2a3}
-  .btn-danger{background:#2b1f21;border-color:#5a2b31;color:#ffc3c3}
-  table{width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:12px}
-  thead th{font-weight:600;color:var(--muted);text-transform:uppercase;font-size:12px;padding:0 10px}
-  tbody tr{background:#10161e;border:1px solid var(--border);border-radius:10px}
-  tbody td{padding:10px}
-  tbody tr td:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
-  tbody tr td:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
-  .pill{padding:4px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;display:inline-block}
-  .pill.new{background:#0f1a13;border-color:#254b34;color:#9df2bf}
-  .pill.ready{background:#19160f;border-color:#4b3e25;color:#ffd48a}
-  .pill.done{background:#121318;border-color:#2f3552;color:#c9d0ff}
-  .pill.cancel{background:#1c1113;border-color:#4c2a2f;color:#ff9ca3}
-  .actions{display:flex;gap:6px;flex-wrap:wrap}
-  .muted{color:var(--muted)}
-  .topline{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)}
-  .ok{color:var(--accent)}
-  .err{color:#ff8080}
-</style>
-</head>
-<body>
-<div class="wrap">
+/***** PIZZ'AMIGO API — v2 *****/
 
-  <h1>Dashboard — PIZZ’AMIGO</h1>
+// Nom de l'onglet
+const SHEET_NAME = 'Commandes';
 
-  <div class="card">
-    <div class="row">
-      <input id="api" placeholder="https://script.google.com/macros/s/.../exec" />
-      <input id="adm" placeholder="Clé admin (facultatif)" />
-      <button class="btn" id="save">Enregistrer</button>
-      <button class="btn" id="refresh">Actualiser</button>
-      <button class="btn-warn" id="demo">Démo</button>
-    </div>
-    <div class="topline">
-      <div id="last">Dernière mise à jour — —</div>
-      <div id="state"></div>
-    </div>
-  </div>
+// Colonnes attendues (en-têtes en ligne 1 du Sheet)
+const HEADERS = [
+  'date',      // A
+  'id',        // B
+  'name',      // C
+  'phone',     // D
+  'slot',      // E
+  'panier',    // F (JSON string)
+  'total',     // G (nombre)
+  'status',    // H (new, ready, done, canceled)
+  'source'     // I (site, demo, etc.)
+];
 
-  <div class="card" style="margin-top:16px">
-    <table>
-      <thead>
-        <tr>
-          <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th>
-          <th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-    <div class="muted" id="empty" style="padding:8px 2px;display:none">Aucune commande pour le moment.</div>
-  </div>
-
-</div>
-
-<script>
-// ---------- PERSIST ----------
-const $ = s => document.querySelector(s);
-const apiInput = $('#api');
-const admInput = $('#adm');
-const last = $('#last');
-const state = $('#state');
-const tbody = $('#tbody');
-const empty = $('#empty');
-
-const LS = {
-  get k(){ return 'pz_dash_cfg_v2'; },
-  load(){ try { return JSON.parse(localStorage.getItem(this.k)||'{}'); } catch { return {}; } },
-  save(data){ localStorage.setItem(this.k, JSON.stringify(data)); }
-};
-
-const cfg = LS.load();
-if (cfg.api) apiInput.value = cfg.api;
-if (cfg.adm) admInput.value = cfg.adm;
-
-<!-- Boutons -->
-<div class="row">
-  <button id="save">Enregistrer</button>
-  <button id="refresh">Actualiser</button>
-  <button id="demo">Démo</button>
-  <button id="enable-audio">Activer le son</button>
-</div>
-
-<script>
-  // ====== AUDIO ======
-  const bell = new Audio('sounds/pizzaiolo.mp3'); // ton son 5s
-  bell.preload = 'auto';
-  bell.volume = 1.0;           // volume à fond
-  bell.playbackRate = 1;       // vitesse normale
-  let audioReady = false;
-
-  document.getElementById('enable-audio').addEventListener('click', async () => {
-    try {
-      await bell.play();       // premier play pour "débloquer" l’audio
-      bell.pause();
-      bell.currentTime = 0;
-      audioReady = true;
-      alert('Son activé ✅');
-    } catch (e) {
-      alert("Clique encore si le son n'est pas activé.");
-    }
-  });
-
-  // Appelle cette fonction quand une nouvelle commande arrive
-  function ding() {
-    if (audioReady) {
-      bell.currentTime = 0;
-      bell.play().catch(()=>{});
-    }
-  }
-
-  // Exemple: dans ton code qui insère les commandes, quand tu détectes une NOUVELLE:
-  // if (isNewOrder) ding();
-</script>
-
-// ---------- STATE ----------
-let known = new Map();   // id -> order
-function fmtMoney(n){ return (Number(n)||0).toFixed(2).replace('.', ',') + ' €'; }
-function nowStr(){
-  const d=new Date();
-  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+/* ------------ utils ------------- */
+function _sheet() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
+  if (!sh) throw new Error(`Feuille "${SHEET_NAME}" introuvable.`);
+  return sh;
 }
-function setOK(msg){ state.innerHTML = `<span class="ok">${msg}</span>`; }
-function setERR(msg){ state.innerHTML = `<span class="err">${msg}</span>`; }
 
-// ---------- RENDER ----------
-function renderAll(){
-  const arr = Array.from(known.values())
-    .sort((a,b)=> (b.when||'').localeCompare(a.when||''));
-  tbody.innerHTML = '';
-  if (!arr.length){ empty.style.display='block'; return; }
-  empty.style.display='none';
-  for (const o of arr){
-    const tr = document.createElement('tr');
-    const pill = `pill ${o.status==='ready'?'ready':o.status==='done'?'done':o.status==='cancel'?'cancel':'new'}`;
-    tr.innerHTML = `
-      <td>${(o.when||'').slice(11,16)}</td>
-      <td>${o.id||''}</td>
-      <td>${o.name||''}</td>
-      <td>${o.phone||''}</td>
-      <td>${o.slot||''}</td>
-      <td>${Array.isArray(o.items)?o.items.map(it=>`${it.name}${it.suppl?` (+${it.suppl})`:''} × ${it.qty||1}`).join('<br>') : (o.items||'')}</td>
-      <td>${fmtMoney(o.total||0)}</td>
-      <td><span class="${pill}">${(o.status||'nouvelle')}</span></td>
-      <td class="actions">
-         <button class="btn-warn" data-act="ready" data-id="${o.id}">Prête</button>
-         <button class="btn-accent" data-act="done" data-id="${o.id}">Terminée</button>
-         <button class="btn-danger" data-act="cancel" data-id="${o.id}">Annuler</button>
-      </td>`;
-    tbody.appendChild(tr);
+function _respond(obj, eParam) {
+  const out = ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+  return out;
+}
+
+function _todayYYYYMMDD() {
+  const tz = Session.getScriptTimeZone() || 'Europe/Paris';
+  const d = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  return d; // ex: 2025-09-27
+}
+
+/* ----------- GET : liste commandes du jour ----------- */
+function doGet(e) {
+  try {
+    const p = e && e.parameter ? e.parameter : {};
+    if (p.ping) return _respond({ ok: true, status: 'up' });
+
+    const sh = _sheet();
+    const lastRow = sh.getLastRow();
+    const lastCol = sh.getLastColumn();
+    if (lastRow < 2) return _respond({ ok: true, orders: [] });
+
+    // lecture rapide sans la ligne d'en-têtes
+    const values = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    const idx = {}; HEADERS.forEach((h, i) => idx[h] = i); // A->0, B->1, ...
+
+    const today = _todayYYYYMMDD();
+
+    // Ne filtre QUE sur la date du jour (pas de filtre "source" ni "status")
+    const orders = values
+      .filter(r => String(r[idx['date']]).startsWith(today))
+      .map(r => {
+        let basket = [];
+        try { basket = JSON.parse(String(r[idx['panier']]) || '[]'); } catch(_){}
+        return {
+          id:      String(r[idx['id']] || ''),
+          when:    String(r[idx['date']] || ''),   // date/heure brute
+          name:    String(r[idx['name']] || ''),
+          phone:   String(r[idx['phone']] || ''),
+          slot:    String(r[idx['slot']] || ''),   // 18:00, 18:30, ...
+          basket,                                 // tableau [{label, qty, price, ...}]
+          total:   Number(r[idx['total']] || 0),
+          status:  String(r[idx['status']] || 'new'),
+          source:  String(r[idx['source']] || '')
+        };
+      });
+
+    return _respond({ ok: true, orders });
+
+  } catch (err) {
+    return _respond({ ok: false, error: String(err) });
   }
 }
 
-// click actions: on ne supprime pas, on met à jour le statut local
-tbody.addEventListener('click', (e)=>{
-  const b = e.target.closest('button[data-act]');
-  if(!b) return;
-  const id = b.getAttribute('data-id');
-  const act = b.getAttribute('data-act'); // ready | done | cancel
-  const o = known.get(id);
-  if(!o) return;
-  o.status = act==='ready'?'ready':act==='done'?'done':'cancel';
-  known.set(id,o);
-  renderAll();
-});
+/* ----------- POST : ajout d’une commande ----------- */
+function doPost(e) {
+  try {
+    const body = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
+    const data = JSON.parse(body);
 
-// ---------- FETCH ----------
-async function fetchToday(){
-  const API = apiInput.value.trim();
-  if(!API){ setERR("Renseigne l'URL de l’API"); return; }
+    // champs attendus côté site :
+    // name, phone, slot, panier (array), total, source ('site')
+    const now = new Date();
+    const tz = Session.getScriptTimeZone() || 'Europe/Paris';
+    const when = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss'); // pour la colonne A
+    const id   = 'PZ-' + Utilities.getUuid().slice(0,8).toUpperCase(); // colonne B
 
-  try{
-    setOK('Chargement…');
-    // IMPORTANT : pas de filtre source/statut ici
-    const url = API + (API.includes('?') ? '&' : '?') + 'orders=today';
-    const res = await fetch(url, { cache:'no-store' });
-    const js = await res.json(); // doit renvoyer { ok:true, orders:[...] }
-    if(!js.ok){ throw new Error(js.error || 'Réponse non OK'); }
+    const sh = _sheet();
+    sh.appendRow([
+      when,                // date
+      id,                  // id
+      data.name || '',     // name
+      data.phone || '',    // phone
+      data.slot || '',     // slot
+      JSON.stringify(data.panier || []), // panier (JSON)
+      Number(data.total || 0),           // total
+      'new',               // status par défaut
+      String(data.source || 'site')      // source
+    ]);
 
-    const recvd = js.orders || [];
-    let newCount = 0;
+    return _respond({ ok: true, id });
 
-    for (const r of recvd){
-      // normalise un peu
-      const id = String(r.id||'').trim();
-      if(!id) continue;
-      const o = {
-        id,
-        when: String(r.when||''),
-        name: String(r.name||''),
-        phone: String(r.phone||''),
-        slot: String(r.slot||''),
-        items: Array.isArray(r.items)? r.items : (()=>{ try{return JSON.parse(r.items)}catch{return String(r.items||'')}})(),
-        total: Number(r.total||0),
-        status: String(r.status||'nouvelle')
-      };
-      if(!known.has(id)){ newCount++; }
-      known.set(id,o);
-    }
-
-    renderAll();
-    last.textContent = `Dernière mise à jour — ${nowStr()} — OK`;
-    if(newCount>0) beepLoud();              // 🔊 bip à l’arrivée de nouvelles
-    setOK(`OK (${recvd.length} commandes)`);
-  }catch(err){
-    setERR('Erreur réseau');
-    last.textContent = `Dernière mise à jour — ${nowStr()} — ERREUR`;
-    console.error(err);
+  } catch (err) {
+    return _respond({ ok: false, error: String(err) });
   }
 }
-
-// ---------- DEMO ----------
-function addDemo(){
-  const id = 'DEMO-' + Math.random().toString(16).slice(2,6).toUpperCase();
-  const demo = {
-    id,
-    when: new Date().toISOString(),
-    name: 'Test JSONP',
-    phone: '06 00 00 00 00',
-    slot: '19:00',
-    items: [{name:'Margharita', qty:1}],
-    total: 7.50,
-    status: 'nouvelle'
-  };
-  known.set(id,demo);
-  renderAll();
-  last.textContent = `Dernière mise à jour — ${nowStr()} — Démo ajoutée`;
-  beepLoud();
-}
-
-// ---------- UI ----------
-$('#save').addEventListener('click', ()=>{
-  LS.save({ api: apiInput.value.trim(), adm: admInput.value.trim() });
-  setOK('Enregistré');
-});
-$('#refresh').addEventListener('click', fetchToday);
-$('#demo').addEventListener('click', addDemo);
-
-// autoload si API en mémoire
-if(apiInput.value) fetchToday();
-</script>
-</body>
-</html>
