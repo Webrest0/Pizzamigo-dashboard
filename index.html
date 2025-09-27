@@ -5,69 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{
-    --bg:#0b0f14;--panel:#101722;--line:#273144;--muted:#b8c2d6;
-    --green:#1fcf7c;--red:#e55252;--amber:#ffb54c;--white:#fff;
-  }
+  :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252;--accent:#ffb54c}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1050px;margin:18px auto;padding:0 14px}
-  h1{margin:0 0 12px;font-size:26px;letter-spacing:.2px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-
-  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .toolbar input[type=text]{flex:1 1 380px;min-width:260px;border:1px solid var(--line);background:#0d1421;color:#fff;border-radius:10px;padding:9px 10px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn.primary{background:var(--green);color:#002015;border-color:transparent}
-  .btn.ghost{opacity:.9}
-  .status{font:600 12px/1 system-ui;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04)}
-  .status.new{border-color:#3a4156}
-  .status.ready{border-color:#7bdcae;background:rgba(31,207,124,.08);color:#aef2d3}
-  .status.done{border-color:#7ea5ff;background:rgba(158,199,255,.08);color:#cfe2ff}
-  .status.canceled{border-color:#ff9c9c;background:rgba(229,82,82,.10);color:#ffc8c8}
-
+  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+  h1{margin:0 0 10px 0;font-size:26px}
+  .panel{border:1px solid var(--line);border-radius:14px;padding:12px;background:#0f1622}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input[type=text]{width:100%;max-width:560px;border:1px solid var(--line);background:#0f1622;color:#fff;border-radius:10px;padding:8px}
+  button{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
+  button.primary{background:var(--green);color:#001b10;border-color:transparent}
+  button.warn{background:#2a1b1b;border-color:#6c3b3b}
   .muted{color:var(--muted)}
-  .note{font-size:.92rem}
-
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{border-top:1px solid var(--line);padding:10px 8px;vertical-align:middle}
-  th{font-weight:700;text-align:left;color:#dfe7fb}
-  td.actions{white-space:nowrap}
-  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;margin:2px;display:inline-block;cursor:pointer}
-  .pill.red{border-color:#ff8f8f;color:#ffb3b3}
-  .pill.primary{background:var(--green);border-color:transparent;color:#002015}
-  .time{white-space:nowrap}
-
-  /* mobile */
-  @media (max-width:720px){
-    th:nth-child(3),td:nth-child(3){display:none;} /* client */
-    th:nth-child(4),td:nth-child(4){display:none;} /* phone */
-    th:nth-child(8),td:nth-child(8){display:none;} /* total */
-  }
-
-  /* panneau erreur */
-  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
+  table{width:100%;border-collapse:separate;border-spacing:0}
+  th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+  th{color:#cdd7ee;text-align:left;font-weight:600}
+  .tag{border:1px solid var(--line);padding:4px 8px;border-radius:999px;display:inline-block}
+  .tag.new{border-color:#6c7cff}
+  .tag.ready{border-color:#ffb54c;color:#ffb54c}
+  .tag.done{border-color:#6cffb0;color:#6cffb0}
+  .tag.cancel{border-color:#ff8b8b;color:#ffb4b4}
+  .actions button{margin-right:6px}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px}
+  #err{position:fixed;right:10px;bottom:10px;display:none;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
+  @media (max-width: 680px){
+    th:nth-child(3), td:nth-child(3){display:none} /* téléphone masqué sur mobile */
+    th:nth-child(6), td:nth-child(6){display:none} /* total masqué si petit écran */
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+
   <h1>Dashboard — PIZZ’AMIGO</h1>
 
-  <div class="card">
-    <div class="toolbar">
-      <input id="api" type="text" placeholder="URL de l’API Apps Script (…/exec)" />
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
-      <button id="save" class="btn">Enregistrer</button>
-      <button id="refresh" class="btn">Actualiser</button>
-      <button id="demo" class="btn">Démo</button>
-      <span id="status" class="note muted">—</span>
+  <div class="panel" style="margin-bottom:12px">
+    <div class="row">
+      <input id="api" type="text" placeholder="URL de l’API Apps Script"
+             value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
+      <input id="adm" type="text" placeholder="Clé admin (facultatif)" value="PIZZAMIGO-ADMIN-123" style="max-width:240px">
+      <button id="save">Enregistrer</button>
+      <button id="refresh">Actualiser</button>
+      <button id="demo">Démo</button>
+      <span class="muted" id="status">‒</span>
+      <span class="pill" id="sound-pill">🔊 Activer le son</span>
     </div>
   </div>
 
-  <div class="card" style="margin-top:10px">
-    <table id="tab">
+  <div class="panel">
+    <table id="tbl">
       <thead>
         <tr>
           <th>Heure</th>
@@ -75,235 +62,207 @@
           <th>Client</th>
           <th>Téléphone</th>
           <th>Horaire</th>
-          <th>Pizzas</th>
           <th>Total</th>
           <th>Statut</th>
           <th>Action</th>
         </tr>
       </thead>
-      <tbody id="rows">
-        <tr><td colspan="9" class="muted">Aucune commande pour le moment.</td></tr>
+      <tbody id="body">
+        <tr><td colspan="8" class="muted">Aucune commande sur les dernières 24 h.</td></tr>
       </tbody>
     </table>
   </div>
+
+  <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 </div>
 
-<!-- cloche courte (base64) -->
-<audio id="bell" preload="auto">
-  <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA... (cloche courte encodée) ..." type="audio/mp3">
+<!-- petit ding intégré (1s) -->
+<audio id="ding" preload="auto">
+  <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA... (son court coupé pour la lisibilité) ..." type="audio/mpeg">
 </audio>
 
-<!-- panneau erreur -->
-<div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
-
 <script>
-/* ===== util — panneau erreur ===== */
+/* ========== Anti page blanche ========== */
 function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+window.addEventListener('error', e=>showErr(e.message+'\\n'+(e.error&&e.error.stack||'')));
 window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ===== CONFIG / ÉTAT ===== */
-const API_DEFAULT = ""; // <-- vide par défaut : tu colles ton /exec dans le champ (stocké après)
-const POLL_MS = 6000;
-
-const st = {
-  api: localStorage.getItem('pizz_api') || API_DEFAULT,
-  adm: localStorage.getItem('pizz_adm') || "",
-  seen: new Map(),        // id -> rowElement (pour ne pas dupliquer)
-  lastPing: 0,
-  timer: null
+/* ========== CONFIG ========== */
+const S = {
+  API_URL: localStorage.getItem('pizz_api') || document.getElementById('api').value,
+  ADMIN:   localStorage.getItem('pizz_admin') || document.getElementById('adm').value,
+  known:   new Map(),   // id -> rowElement
+  audioArmed: false
 };
+document.getElementById('api').value = S.API_URL;
+document.getElementById('adm').value = S.ADMIN;
 
-const $ = s => document.querySelector(s);
-const rows = $('#rows');
-$('#api').value = st.api;
-$('#adm').value = st.adm;
-$('#status').textContent = '—';
-
-/* ===== helpers ===== */
-function euro(v){ return (Number(v)||0).toFixed(2).replace('.', ',')+' €'; }
-function hhmm(x){
-  if(!x) return '';
-  if(typeof x === 'string'){
-    // "19:30" -> tel quel
-    const m = x.match(/^(\d{1,2}):(\d{2})/);
-    if(m) return (m[1].padStart(2,'0')+':'+m[2]);
+/* ========== Utilitaires ========== */
+const euro = v => (Number(v)||0).toFixed(2).replace('.', ',')+' €';
+const hhmm = t => {
+  // accepte "19:30" OU timestamp/ISO
+  if (typeof t === 'string' && /^\d{1,2}:\d{2}$/.test(t)) return t;
+  const d = new Date(t);
+  if (isNaN(d)) return String(t||'');
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+};
+async function parseResp(res){
+  const raw = await res.text();
+  let data; try{ data = JSON.parse(raw); } catch{ data = {ok:/^(ok|true)$/i.test(raw.trim())}; }
+  return {ok:!!data.ok, data, raw, status:res.status};
+}
+async function postFlexible(url, bodyObj){
+  // essai 1 : text/plain
+  let res = await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(bodyObj)});
+  let pr = await parseResp(res);
+  if (!res.ok || !pr.ok){
+    // essai 2 : sans header strict
+    res = await fetch(url,{method:'POST',body:JSON.stringify(bodyObj)});
+    pr = await parseResp(res);
   }
+  return pr;
+}
+
+/* ========== Audio : déverrouillage par clic ========== */
+const ding = document.getElementById('ding');
+const soundPill = document.getElementById('sound-pill');
+soundPill.addEventListener('click', async ()=>{
   try{
-    const d = new Date(x);
-    const h = d.getHours().toString().padStart(2,'0');
-    const m = d.getMinutes().toString().padStart(2,'0');
-    return `${h}:${m}`;
-  }catch{ return String(x); }
-}
-function parseJSONorText(txt){
-  try{ return JSON.parse(txt); }catch{ return { ok:/^(ok|true)$/i.test(txt.trim()) }; }
-}
+    await ding.play(); ding.pause(); ding.currentTime=0;
+    S.audioArmed = true;
+    soundPill.textContent = '✅ Son prêt';
+  }catch(e){
+    alert("Clique encore pour activer le son (bloqué par le navigateur).");
+  }
+});
+function ring(){ if(S.audioArmed){ ding.currentTime=0; ding.play().catch(()=>{}); }}
 
-/* ===== rendu d’une ligne ===== */
-function makeRow(o){
-  // o: {id, when, name, phone, slot, basket(JSON), total, status}
+/* ========== Rendu ligne ========== */
+function renderRow(o){
+  const id = o.id || o.ID || o.Id || o.i || '';
+  const pizzas = (()=>{ // texte pizzas + suppléments
+    if (Array.isArray(o.items)) {
+      return o.items.map(it=>{
+        const sup = (it.supplType||it.suppl)?.type || it.supplType;
+        return `${it.name} × ${it.qty||1}${sup?` (+1€ ${sup})`:''}`;
+      }).join('<br>');
+    }
+    if (o.basket) { // texte brut du site
+      try{
+        const b = (typeof o.basket==='string')? JSON.parse(o.basket): o.basket;
+        return b.map(it=>`${it.name} × ${it.qty||1}${it.supplType?` (+1€ ${it.supplType})`:''}`).join('<br>');
+      }catch{ return String(o.basket); }
+    }
+    return String(o.pizzas||o.pizza||'');
+  })();
+
   const tr = document.createElement('tr');
-  const items = (()=>{ try{ return JSON.parse(o.basket||o.items||'[]'); }catch{ return []; }})();
-  const pizzas = items.map(it=>{
-    const sup = it.supplType || it.suppl || '';
-    const supTxt = sup ? ` (+1€ ${sup})` : '';
-    return `${it.name||it.n||'—'} × ${it.qty||1}${supTxt}`;
-  }).join('<br>');
-
+  tr.dataset.id = id;
   tr.innerHTML = `
-    <td class="time">${hhmm(o.when||o.date||o.createdAt)}</td>
-    <td>${o.id||''}</td>
-    <td>${o.name||''}</td>
-    <td>${o.phone||''}</td>
-    <td class="time">${hhmm(o.slot||o.pickup||o.time)}</td>
-    <td>${pizzas||'—'}</td>
-    <td>${euro(o.total)}</td>
-    <td class="statCell"></td>
+    <td>${hhmm(o.time || o.when || o.date || '')}</td>
+    <td>${id||''}</td>
+    <td>${o.name||o.client||''}</td>
+    <td>${o.phone||o.tel||''}</td>
+    <td>${hhmm(o.slot||o.horaire||'')}</td>
+    <td>${euro(o.total||o.Total||0)}</td>
+    <td><span class="tag ${o.status==='ready'?'ready':o.status==='done'?'done':o.status==='canceled'?'cancel':'new'}">${o.status||'nouvelle'}</span></td>
     <td class="actions">
-      <button class="pill" data-act="ready">Prête</button>
-      <button class="pill" data-act="done">Terminée</button>
-      <button class="pill" data-act="canceled">Annuler</button>
-      <button class="pill red" data-act="remove">×</button>
+      <button data-act="ready">Prête</button>
+      <button data-act="done">Terminée</button>
+      <button data-act="cancel">Annuler</button>
+      <button class="warn" data-act="del">X</button>
+      <div class="muted" style="margin-top:6px">${pizzas||'-'} </div>
     </td>
   `;
-  setStatus(tr, (o.status||'new'));
-  tr.dataset.id = o.id||'';
-  tr.querySelectorAll('button[data-act]').forEach(b=>{
-    b.addEventListener('click', ()=>onAction(tr, b.dataset.act));
+  tr.querySelectorAll('button[data-act]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const act = btn.dataset.act;
+      if (act==='del'){ tr.remove(); S.known.delete(id); return; } // suppression locale seulement
+      await setStatus(id, act);
+    });
   });
   return tr;
 }
-function setStatus(tr, s){
-  const c = tr.querySelector('.statCell');
-  c.innerHTML = '';
-  const b = document.createElement('span');
-  b.className = `status ${s}`;
-  b.textContent = (s==='ready'?'prête':s==='done'?'terminée':s==='canceled'?'annulée':'nouvelle');
-  c.appendChild(b);
-}
 
-/* ===== lecture des commandes =====
-   GET  API?list=1&admin=XYZ  -> {ok:true, orders:[...]}
-*/
-async function load(){
-  if(!st.api){ $('#status').textContent = 'Renseigne l’URL de l’API'; return; }
+/* ========== Récup + affichage ========== */
+async function fetchOrders(){
+  const API = S.API_URL || document.getElementById('api').value;
+  const status = document.getElementById('status');
   try{
-    $('#status').textContent = 'Chargement…';
-    const url = new URL(st.api);
-    url.searchParams.set('list', '1');
-    if(st.adm) url.searchParams.set('admin', st.adm);
+    const url = API + (API.includes('?')?'&':'?') + 'list=1';
+    const res = await fetch(url, {cache:'no-store'});
+    const {data, ok} = await parseResp(res);
+    if (!res.ok){ status.textContent='Erreur réseau'; return; }
 
-    const res = await fetch(url.toString(), {cache:'no-store'});
-    const txt = await res.text();
-    const data = parseJSONorText(txt);
+    // data.orders attendu. Si le script renvoie directement un tableau, on s’adapte.
+    const list = (data && (data.orders||data.data||data)) || [];
+    const tbody = document.getElementById('body');
+    if (tbody.firstElementChild) tbody.innerHTML='';
 
-    if(!res.ok || !data.ok || !Array.isArray(data.orders)){
-      $('#status').textContent = 'Erreur réseau';
-      console.error('GET list fail', res.status, txt);
-      return;
+    // append sans écraser ce qu’on connaît déjà
+    for (const o of list){
+      const id = o.id || o.ID || o.i;
+      if (S.known.has(id)) continue;
+      const tr = renderRow(o);
+      tbody.appendChild(tr);
+      S.known.set(id, tr);
+      // son pour les arrivées pendant la session
+      ring();
     }
-
-    const orders = data.orders;
-    let added = 0;
-
-    // vide le placeholder si on a la première vraie ligne
-    if(rows.children.length===1 && rows.firstElementChild?.children?.length===1){
-      rows.innerHTML = '';
-    }
-
-    for(const o of orders){
-      const id = String(o.id||'').trim();
-      if(id && !st.seen.has(id)){
-        const tr = makeRow(o);
-        st.seen.set(id, tr);
-        rows.insertBefore(tr, rows.firstChild); // en haut
-        added++;
-        // son à chaque vraie nouvelle commande (hors refresh)
-        try{ document.getElementById('bell').currentTime=0; document.getElementById('bell').play(); }catch{}
-      }
-    }
-
-    const ts = new Date();
-    $('#status').textContent = `${ts.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — OK${added?` (${added} ajoutée${added>1?'s':''})`:''}`;
-  }catch(err){
-    $('#status').textContent = 'Erreur réseau';
-    console.error(err);
+    status.textContent = new Date().toLocaleTimeString('fr-FR') + ' — OK';
+  }catch(e){
+    console.error(e);
+    status.textContent='Erreur réseau';
   }
 }
 
-/* ===== actions =====
-   POST API  text/plain(JSON) :
-   - démo: {demo:true}
-   - maj statut: {id:"...", status:"ready|done|canceled"}
-*/
-async function onAction(tr, act){
-  if(act==='remove'){ tr.remove(); st.seen.delete(tr.dataset.id); return; }
-
-  const id = tr.dataset.id;
-  if(!id) return;
-
-  try{
-    const payload = { id, status: act, admin: st.adm||undefined };
-    const res = await fetch(st.api, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
-    const ok = parseJSONorText(await res.text()).ok && res.ok;
-    if(!ok) throw new Error('POST status non ok');
-    setStatus(tr, act);
-  }catch(err){
-    console.error(err);
-    alert("Échec de mise à jour du statut.");
+/* ========== Actions ========== */
+async function setStatus(id, statusKey){
+  const API = S.API_URL;
+  const body = {action:'status', id, status:statusKey, admin:S.ADMIN};
+  const r = await postFlexible(API, body);
+  if (!r.ok){ alert("Échec de mise à jour du statut."); return; }
+  // mettre à jour visuel localement
+  const tr = S.known.get(id);
+  if (tr){
+    const span = tr.querySelector('.tag');
+    span.className = 'tag ' + (statusKey==='ready'?'ready':statusKey==='done'?'done':statusKey==='cancel'?'cancel':'new');
+    span.textContent = statusKey==='ready'?'ready':statusKey==='done'?'done':statusKey==='cancel'?'canceled':'nouvelle';
   }
 }
 
-/* ===== démo ===== */
 async function sendDemo(){
-  if(!st.api){ alert("Renseigne l’URL de l’API."); return; }
-  try{
-    const demo = {
-      demo:true,
-      admin: st.adm||undefined,
-      // valeurs de test côté serveur si besoin
-      name:"Test JSONP", phone:"06 00 00 00 00",
-      slot:"19:00",
-      items:[{name:"Margharita",qty:1,price:7.5}],
-      total:7.5, source:"site"
-    };
-
-    // essai 1 : text/plain
-    let r = await fetch(st.api, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(demo)});
-    let ok = parseJSONorText(await r.text()).ok && r.ok;
-
-    // essai 2 : sans header strict
-    if(!ok){
-      r = await fetch(st.api, {method:'POST', body:JSON.stringify(demo)});
-      ok = parseJSONorText(await r.text()).ok && r.ok;
-    }
-
-    if(!ok) throw new Error('échec démo');
-
-    // note d’état + son
-    $('#status').textContent = 'Démo envoyée — en attente d’affichage…';
-  }catch(err){
-    console.error(err);
-    alert("Échec d’envoi de la démo.");
-  }
+  const API = S.API_URL;
+  const sample = {
+    id: 'DEMO-' + Math.random().toString(36).slice(2,6).toUpperCase(),
+    name: 'Test JSONP',
+    phone: '06 00 00 00 00',
+    slot: '19:30',
+    items: [{name:'Margharita', qty:1, price:7.5, supplType:'viande'}],
+    total: 8.5,
+    source: 'demo'
+  };
+  const r = await postFlexible(API, {action:'demo', admin:S.ADMIN, order:sample});
+  if (!r.ok){ alert("Échec d’envoi de la démo."); return; }
+  // l’API ajoute en général l’ordre : on force un refresh immédiat
+  fetchOrders();
 }
 
-/* ===== wiring ===== */
-$('#save').addEventListener('click', ()=>{
-  st.api = $('#api').value.trim();
-  st.adm = $('#adm').value.trim();
-  localStorage.setItem('pizz_api', st.api);
-  localStorage.setItem('pizz_adm', st.adm);
-  $('#status').textContent = 'Sauvé localement.';
-});
-$('#refresh').addEventListener('click', load);
-$('#demo').addEventListener('click', sendDemo);
+/* ========== Boutons ========== */
+document.getElementById('save').onclick = ()=>{
+  S.API_URL = document.getElementById('api').value.trim();
+  S.ADMIN   = document.getElementById('adm').value.trim();
+  localStorage.setItem('pizz_api', S.API_URL);
+  localStorage.setItem('pizz_admin', S.ADMIN);
+};
+document.getElementById('refresh').onclick = fetchOrders;
+document.getElementById('demo').onclick = sendDemo;
 
-/* ===== boucle de poll ===== */
-clearInterval(st.timer);
-st.timer = setInterval(load, POLL_MS);
-load(); // premier chargement
+/* ========== Auto-refresh (n’efface rien) ========== */
+setInterval(fetchOrders, 12_000);
+
+/* init */
+fetchOrders();
 </script>
 </body>
 </html>
