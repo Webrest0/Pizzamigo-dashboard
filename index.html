@@ -112,7 +112,6 @@ function initAudio(){
   if (soundEnabled) return;
   try{
     audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
-    // Sur mobile il faut un geste utilisateur pour resume()
     audioCtx.resume();
     soundEnabled = true;
     localStorage.setItem('pizzamigo_sound','1');
@@ -128,7 +127,7 @@ function bell(){
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = 'triangle';
-  osc.frequency.setValueAtTime(880, t0);        // A5
+  osc.frequency.setValueAtTime(880, t0);
   osc.frequency.exponentialRampToValueAtTime(660, t0+0.12);
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(0.5, t0+0.01);
@@ -144,6 +143,20 @@ function api()  { return (elApi.value||'').trim(); }
 function ok(msg){ elStatus.innerHTML = `${nowStr()} — <span class="ok">${msg||'OK'}</span>`; }
 function err(msg){ elStatus.innerHTML = `${nowStr()} — <span class="err">${msg||'Erreur'}</span>`; }
 
+/* Robust parser: JSON si possible, sinon texte */
+async function parseRes(res){
+  let txt = '';
+  try{
+    const ct = res.headers.get('content-type')||'';
+    if(ct.includes('application/json')) return await res.json();
+    txt = await res.text();
+    try{ return JSON.parse(txt); }catch(_){}
+    return { ok: /"ok"\s*:\s*true/.test(txt) || /status"\s*:\s*"up"/.test(txt), raw: txt };
+  }catch(e){
+    return { ok:false, error:String(e), raw:txt };
+  }
+}
+
 /* ====== Render ====== */
 function renderTable(list){
   const prevIds = new Set(ORDERS.keys());
@@ -153,7 +166,6 @@ function renderTable(list){
     ORDERS.set(o.id, o);
 
     const tr = document.createElement('tr');
-
     const td = (label, html) => {
       const c = document.createElement('td');
       c.setAttribute('data-label', label);
@@ -165,8 +177,8 @@ function renderTable(list){
     tr.appendChild(td('ID', o.id||''));
     tr.appendChild(td('Client', o.name||''));
     tr.appendChild(td('Téléphone', o.phone||''));
-    tr.appendChild(td('Horaire', (o.slot||'').replace(':','h')));
-    // pizzas : affiche suppléments si présents
+    tr.appendChild(td('Horaire', String(o.slot||'').replace(':','h')));
+    // pizzas + suppléments
     const pizzas = Array.isArray(o.basket)? o.basket.map(it=>{
       const sup = it.suppl && Number(it.suppl)>0 ? ` (+1€ ${it.supplType||'suppl.'})` : '';
       return `${it.name} × ${it.qty||1}${sup}`;
@@ -175,12 +187,10 @@ function renderTable(list){
     tr.appendChild(td('Total', `${euro(o.total||0)} €`));
     tr.appendChild(td('Statut', `<span class="chip">${o.status||'new'}</span>`));
 
-    // actions
     const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    ['Prête','Terminée','Annuler'].forEach(lbl=>{
-      const b=document.createElement('button'); b.className='btn';
-      b.textContent=lbl;
-      b.onclick=()=>updateStatus(o.id, lbl==='Prête'?'ready':lbl==='Terminée'?'done':'canceled');
+    [['Prête','ready'],['Terminée','done'],['Annuler','canceled']].forEach(([lbl,val])=>{
+      const b=document.createElement('button'); b.className='btn'; b.textContent=lbl;
+      b.onclick=()=>updateStatus(o.id, val);
       act.appendChild(b);
     });
     const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer';
@@ -191,7 +201,6 @@ function renderTable(list){
     elRows.appendChild(tr);
   });
 
-  // Détection de nouvelles commandes => son
   const newOnes = list.filter(o=>!prevIds.has(o.id));
   if(newOnes.length>0) bell();
 }
@@ -202,9 +211,9 @@ async function getList(){
     const url = api();
     if(!url) return err('Renseigne l’URL de l’API');
     const r = await fetch(url+'?list=1',{cache:'no-store'});
-    const data = await r.json();
-    if(!data.ok) throw new Error(data.error||'Réponse invalide');
-    renderTable(data.orders||[]);
+    const data = await parseRes(r);
+    if(!r.ok || !data) throw new Error('HTTP '+r.status);
+    renderTable(Array.isArray(data.orders)? data.orders : (Array.isArray(data)||data.orders===undefined? (data.orders||[]) : []));
     ok('OK');
   }catch(e){ console.error(e); err('Erreur réseau'); }
 }
@@ -217,10 +226,9 @@ async function sendDemo(){
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({demo:1})
     });
-    const data = await r.json().catch(()=>({ok:false}));
-    if(!r.ok || !data.ok) throw new Error('Echec envoi');
-    ok('Démo ajoutée'); // la cloche sonnera au prochain refresh si nouvelle ligne
-    // on force un refresh après 1s
+    const data = await parseRes(r);
+    if(!r.ok || data.ok===false) throw new Error('Echec envoi');
+    ok('Démo ajoutée');
     setTimeout(getList, 1000);
   }catch(e){ console.error(e); alert("Échec d’envoi de la démo."); err('Échec démo'); }
 }
@@ -234,8 +242,8 @@ async function updateStatus(id, status){
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(body)
     });
-    const data = await r.json().catch(()=>({ok:false}));
-    if(!r.ok || !data.ok) throw new Error('Echec statut');
+    const data = await parseRes(r);
+    if(!r.ok || data.ok===false) throw new Error('Echec statut');
     ok('Statut mis à jour');
     setTimeout(getList, 600);
   }catch(e){ console.error(e); alert("Échec de mise à jour du statut."); err('Échec statut'); }
@@ -253,11 +261,8 @@ document.getElementById('demo').onclick = sendDemo;
 (function boot(){
   elApi.value = localStorage.getItem('pizzamigo_api') || elApi.value;
   elAdm.value = localStorage.getItem('pizzamigo_adm') || '';
-  // si l’utilisateur a déjà activé le son, cache le bouton
   if(localStorage.getItem('pizzamigo_sound')==='1'){ btnEnableAudio.style.display='none'; }
-  // premier chargement
   getList();
-  // poll toutes les 10s pour récupérer les nouvelles commandes sans jamais effacer celles affichées à la main
   setInterval(getList, 10000);
 })();
 </script>
