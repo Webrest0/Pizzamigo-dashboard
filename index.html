@@ -6,29 +6,26 @@
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
   :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252}
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-  h1{margin:4px 0 12px 0}
-  input,button{font:inherit}
-  input[type=text]{width:100%;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 14px;position:relative}
+  h1{margin:6px 0 12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;position:relative}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .btn{border:1px solid rgba(255,255,255,.25);background:#1a2333;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+  input[type=text]{flex:1 1 260px;min-width:220px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
+  .btn{border:1px solid rgba(255,255,255,.25);background:#1a2333;color:#fff;border-radius:999px;padding:9px 14px;cursor:pointer;pointer-events:auto}
   .btn.primary{background:var(--green);color:#001b10;border:none}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
+  input[type=range]{width:120px;pointer-events:auto}
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px;vertical-align:middle;text-align:left}
-  .tag{padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
-  .tag.new{background:#233048}
+  .tag{padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:#233048}
   .price{white-space:nowrap}
   .actions .btn{padding:6px 10px}
-  @media (max-width:740px){
-    .hide-sm{display:none}
-    table{font-size:14px}
-    .actions .btn{padding:6px 8px}
-  }
-  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
+  @media (max-width:740px){ .hide-sm{display:none} table{font-size:14px} .actions .btn{padding:6px 8px} }
+  /* panneau erreur */
+  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:9999}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
 </head>
@@ -42,14 +39,19 @@
       <input id="adm" type="text" placeholder="Clé admin (facultatif)">
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn" id="save">Enregistrer</button>
-      <button class="btn" id="refresh">Actualiser</button>
-      <button class="btn" id="demo">Démo</button>
-      <span class="muted" id="status">–</span>
+      <button class="btn" id="save"
+        onclick="onSave()" ontouchstart="onSave()">Enregistrer</button>
+      <button class="btn" id="refresh"
+        onclick="refreshNow()" ontouchstart="refreshNow()">Actualiser</button>
+      <button class="btn" id="demo"
+        onclick="sendDemo()" ontouchstart="sendDemo()">Démo</button>
+      <span id="status" class="muted">–</span>
+
       <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <button class="btn" id="soundBtn">🔔 Activer le son</button>
-        <label class="muted">Son :</label>
-        <input type="range" min="0" max="1" step="0.05" id="vol" value="0.7" style="width:120px">
+        <button class="btn" id="soundBtn"
+          onclick="enableSound()" ontouchstart="enableSound()">🔔 Activer le son</button>
+        <label class="muted" for="vol">Son :</label>
+        <input type="range" min="0" max="1" step="0.05" id="vol" value="0.7">
       </span>
     </div>
   </div>
@@ -77,39 +79,25 @@
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
-/* ===== Anti page blanche ===== */
+/* ========= Sécurité anti page blanche ========= */
 function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
 window.addEventListener('error', e=>showErr(e.message+'\\n'+(e.error&&e.error.stack||'')));
 window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ===== State ===== */
+/* ========= État ========= */
 const S = {
   api: localStorage.getItem('pizz_api') || '',
   adm: localStorage.getItem('pizz_adm') || 'PIZZAMIGO-ADMIN-123',
   orders: new Map(),
-  audioReady:false,
-  ctx:null
+  ctx:null, audioReady:false, timer:null
 };
-
 document.getElementById('api').value = S.api;
 document.getElementById('adm').value = S.adm;
 
-/* ===== Helpers ===== */
-const € = v => Number(v).toFixed(2).replace('.', ',')+' €';
-const hhmm = x => {
-  if(!x) return '';
-  if(/^\d{2}:\d{2}$/.test(x)) return x;
-  const d = new Date(x); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-};
-function ring(){
-  if(!S.audioReady||!S.ctx) return;
-  const g=S.ctx.createGain(), o=S.ctx.createOscillator();
-  o.type='triangle'; o.frequency.value=880;
-  g.gain.value=0.0001;
-  g.gain.exponentialRampToValueAtTime(Math.max(0.01, +document.getElementById('vol').value), S.ctx.currentTime+0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, S.ctx.currentTime+0.35);
-  o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+0.35);
-}
+/* ========= Helpers ========= */
+const € = v => Number(v||0).toFixed(2).replace('.', ',')+' €';
+const hhmm = t => /^\d{2}:\d{2}$/.test(t||'') ? t : (()=>{const d=new Date(t||Date.now());return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')})();
+
 function itemsText(o){
   const arr=(o.items||o.basket||[]);
   return arr.map(it=>{
@@ -126,12 +114,12 @@ function rowHtml(o){
     <td>${hhmm(o.slot||o.horaire||o.when||'')}</td>
     <td>${itemsText(o)||'-'}</td>
     <td class="price">${€(o.total||o.total11||0)}</td>
-    <td><span class="tag new">${o.status||'new'}</span></td>
+    <td><span class="tag">${o.status||'new'}</span></td>
     <td class="actions">
-      <button class="btn" data-act="ready">Prête</button>
-      <button class="btn" data-act="done">Terminée</button>
-      <button class="btn red" data-act="cancel">Annuler</button>
-      <button class="btn" data-act="remove">×</button>
+      <button class="btn" onclick="setStatus('${o.id}','ready')">Prête</button>
+      <button class="btn" onclick="setStatus('${o.id}','done')">Terminée</button>
+      <button class="btn red" onclick="setStatus('${o.id}','cancel')">Annuler</button>
+      <button class="btn" onclick="removeRow('${o.id}')">×</button>
     </td>
   </tr>`;
 }
@@ -146,38 +134,41 @@ function upsert(list){
   });
   if(added>0) ring();
 }
+function ring(){
+  if(!S.audioReady||!S.ctx) return;
+  const g=S.ctx.createGain(), o=S.ctx.createOscillator();
+  o.type='triangle'; o.frequency.value=880;
+  g.gain.value=0.0001;
+  g.gain.exponentialRampToValueAtTime(Math.max(0.02,+document.getElementById('vol').value), S.ctx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, S.ctx.currentTime+0.35);
+  o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+0.35);
+}
 
-/* ===== API ===== */
+/* ========= API ========= */
+function apiUrl(){const v=(document.getElementById('api').value||S.api||'').trim(); if(!v) throw new Error('URL API manquante'); return v;}
 async function apiGet(params){
-  const base=(document.getElementById('api').value||S.api||'').trim();
-  if(!base) throw new Error('URL API manquante');
-  const u = new URL(base);
-  Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r = await fetch(u,{method:'GET',cache:'no-store'});
-  const t = await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
+  const u = new URL(apiUrl()); Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r = await fetch(u,{method:'GET',cache:'no-store'}); const t=await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
 }
 async function apiPost(obj){
-  const base=(document.getElementById('api').value||S.api||'').trim();
-  if(!base) throw new Error('URL API manquante');
-  const r = await fetch(base,{
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify(obj)
-  });
+  const r = await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)});
   const t=await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
 }
 
-/* ===== Actions ===== */
+/* ========= Actions (liées inline) ========= */
+function onSave(){
+  S.api=(document.getElementById('api').value||'').trim();
+  S.adm=(document.getElementById('adm').value||'').trim()||'PIZZAMIGO-ADMIN-123';
+  localStorage.setItem('pizz_api',S.api); localStorage.setItem('pizz_adm',S.adm);
+  document.getElementById('status').textContent='Paramètres enregistrés';
+}
 async function refreshNow(){
   try{
-    const data = await apiGet({list:'today'});
-    if(!data.ok) throw new Error(data.error||'Réponse invalide');
-    upsert(data.orders||[]);
-    document.getElementById('status').textContent = new Date().toTimeString().slice(0,8)+' — OK';
-  }catch(e){
-    document.getElementById('status').textContent='Erreur réseau';
-    showErr(String(e));
-  }
+    const d = await apiGet({list:'today'});
+    if(!d.ok) throw new Error(d.error||'Réponse invalide');
+    upsert(d.orders||[]);
+    document.getElementById('status').textContent=new Date().toTimeString().slice(0,8)+' — OK';
+  }catch(e){ document.getElementById('status').textContent='Erreur réseau'; showErr(String(e)); }
 }
 async function sendDemo(){
   try{
@@ -193,44 +184,27 @@ async function sendDemo(){
     });
     if(!res.ok) throw new Error(res.error||'Échec envoi démo');
     await refreshNow();
-  }catch(e){
-    alert('Échec d’envoi de la démo.');
-    showErr(String(e));
-  }
+  }catch(e){ alert('Échec d’envoi de la démo.'); showErr(String(e)); }
 }
-function tableClick(e){
-  const b=e.target.closest('button[data-act]'); if(!b) return;
-  const tr=e.target.closest('tr'); const id=tr?.dataset.id; if(!id) return;
-  const act=b.dataset.act;
-  if(act==='remove'){S.orders.delete(id); tr.remove(); return;}
-  apiPost({adminKey:(document.getElementById('adm').value||S.adm||'').trim(), setStatus:true, id, status:act})
-    .then(r=>{ if(!r.ok) throw new Error(r.error||'setStatus'); tr.querySelector('.tag').textContent=act; })
+function removeRow(id){ S.orders.delete(id); const tr=document.querySelector(`tr[data-id="${CSS.escape(id)}"]`); if(tr) tr.remove(); }
+function setStatus(id,st){
+  apiPost({adminKey:(document.getElementById('adm').value||S.adm||'').trim(), setStatus:true, id, status:st})
+    .then(r=>{ if(!r.ok) throw new Error(r.error||'setStatus'); const tr=document.querySelector(`tr[data-id="${CSS.escape(id)}"]`); if(tr) tr.querySelector('.tag').textContent=st; })
     .catch(err=>showErr(String(err)));
 }
-
-/* ===== Poll ===== */
-let timer=null; function start(){stop(); timer=setInterval(refreshNow,5000);} function stop(){ if(timer) clearInterval(timer); }
-
-/* ===== UI ===== */
-document.getElementById('save').onclick=()=>{
-  S.api=(document.getElementById('api').value||'').trim();
-  S.adm=(document.getElementById('adm').value||'').trim()||'PIZZAMIGO-ADMIN-123';
-  localStorage.setItem('pizz_api',S.api); localStorage.setItem('pizz_adm',S.adm);
-  document.getElementById('status').textContent='Paramètres enregistrés';
-};
-document.getElementById('refresh').onclick=refreshNow;
-document.getElementById('demo').onclick=sendDemo;
-document.getElementById('tbl').addEventListener('click',tableClick);
-document.getElementById('soundBtn').onclick=async ()=>{
+function enableSound(){
   try{
-    if(!S.ctx){ S.ctx = new (window.AudioContext||window.webkitAudioContext)(); }
-    await S.ctx.resume(); S.audioReady=true;
-    document.getElementById('soundBtn').disabled=true; document.getElementById('soundBtn').textContent='🔔 Son activé';
+    if(!S.ctx){ S.ctx=new (window.AudioContext||window.webkitAudioContext)(); }
+    S.ctx.resume().then(()=>{ S.audioReady=true; document.getElementById('soundBtn').disabled=true; document.getElementById('soundBtn').textContent='🔔 Son activé'; });
   }catch(e){ showErr(String(e)); }
-};
+}
 
-/* ===== Boot ===== */
-refreshNow(); start();
+/* ========= Démarrage ========= */
+(function boot(){
+  // pré-remplir ton URL si vide (tu peux l’écraser)
+  if(!S.api) document.getElementById('api').value='https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec';
+  refreshNow(); S.timer=setInterval(refreshNow,5000);
+})();
 </script>
 </body>
 </html>
