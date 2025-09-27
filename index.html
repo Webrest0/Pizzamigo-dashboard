@@ -8,7 +8,6 @@
     :root{
       --bg:#0f1418; --panel:#141b20; --muted:#8fa1ad; --text:#e6edf3;
       --line:#26323a; --green:#37c776; --yellow:#ffce56; --red:#ff6b6b;
-      --accent:#8ab4f8;
     }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
     .wrap{max-width:1100px;margin:28px auto;padding:0 14px}
@@ -80,21 +79,33 @@
     </div>
 
     <div class="note">
-      Astuce : l’URL API est mémorisée dans ton navigateur. Si la console affichait
-      <span class="mono">scp://?list=1</span>, c’est que l’URL était vide. Ce dashboard empêche désormais tout appel tant que l’URL n’est pas valide.
+      L’URL API est mémorisée dans le navigateur. Le dashboard bippe et surligne les **nouvelles** commandes détectées.
     </div>
   </div>
 
+  <!-- petit beep encodé en base64 -->
+  <audio id="beep" preload="auto">
+    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYBAGZkAAAAAAAAPwAAAP8AAP8AAP8A/wD/AP8A/wD/AP8A/wAA" type="audio/wav">
+  </audio>
+
   <script>
   (function(){
-    // --- Helpers -------------------------------------------------------------
-    const $ = sel => document.querySelector(sel);
+    const $ = s => document.querySelector(s);
     const stamp = $('#stamp');
-    const rows = $('#rows');
+    const rows  = $('#rows');
+    const beep  = $('#beep');
 
     const API_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/;
 
-    const nowISO = () => new Date().toISOString();
+    const seenKey = 'pizzamigo_seen_ids'; // pour détecter les nouvelles commandes
+
+    function getSeen(){
+      try{ return new Set(JSON.parse(localStorage.getItem(seenKey) || '[]')); }
+      catch{ return new Set(); }
+    }
+    function setSeen(set){
+      localStorage.setItem(seenKey, JSON.stringify(Array.from(set)));
+    }
 
     function setStamp(text, ok=false){
       const hh = new Date().toTimeString().slice(0,8);
@@ -107,90 +118,74 @@
       const adm = ($('#adm').value || localStorage.getItem('pizzamigo_admin') || '').trim();
       return { api, adm };
     }
-
     function writeConfig({api, adm}){
       if(api) localStorage.setItem('pizzamigo_api', api);
-      if(adm!==undefined) localStorage.setItem('pizzamigo_admin', adm);
+      localStorage.setItem('pizzamigo_admin', adm||'');
     }
-
-    function validateApiOrWarn(api){
-      if(!API_RE.test(api)){
-        setStamp('Erreur : renseigne une URL API /exec');
-        return false;
-      }
+    function validApi(api){
+      if(!API_RE.test(api)){ setStamp('Erreur : colle une URL /exec valide'); return false; }
       return true;
     }
 
     async function fetchJSON(url, opts={}){
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const t = setTimeout(()=>controller.abort(), 10000);
       try{
         const res = await fetch(url, { ...opts, signal: controller.signal });
         if(!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
-      } finally {
-        clearTimeout(t);
-      }
+      } finally { clearTimeout(t); }
     }
 
-    function fmtMoney(eur){
-      try{
-        const n = typeof eur === 'number' ? eur : parseFloat(String(eur).replace(',', '.'));
-        return new Intl.NumberFormat('fr-FR', { style:'currency', currency:'EUR', minimumFractionDigits:2 }).format(n);
-      }catch{ return eur }
+    function fmtEur(v){
+      const n = Number(v); if(Number.isNaN(n)) return v;
+      return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);
     }
 
     function within24h(d){
       const t = (d instanceof Date) ? d : new Date(d);
-      return (Date.now() - t.getTime()) <= 24*3600*1000;
+      return (Date.now()-t.getTime()) <= 24*3600*1000;
     }
 
     function pill(status){
       const s = (status||'').toLowerCase();
-      const map = {
-        'nouvelle':'new', 'new':'new', 'reçue':'new',
-        'prête':'ready', 'prete':'ready', 'ready':'ready',
-        'remise':'done', 'done':'done',
-        'annulée':'cancel', 'annulee':'cancel', 'cancel':'cancel'
-      };
+      const map = { nouvelle:'new', 'new':'new', prête:'ready', prete:'ready', ready:'ready', remise:'done', done:'done', annulée:'cancel', annulee:'cancel', cancel:'cancel' };
       const cls = map[s] || 'new';
-      const label = status || 'nouvelle';
-      return `<span class="pill ${cls}">${label}</span>`;
+      return `<span class="pill ${cls}">${status||'nouvelle'}</span>`;
     }
 
-    function renderRows(list){
-      if(!Array.isArray(list) || !list.length){
+    function render(list){
+      if(!list?.length){
         rows.innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center;padding:18px">Aucune commande pour les dernières 24 h.</td></tr>`;
         return;
       }
-      const out = [];
+      const out=[], seen=getSeen(), newly=[];
       for(const o of list){
-        // Tente de mapper les champs quels que soient les noms
         const when  = o.date || o.createdAt || o.time || o.ts || o.Date || o.dateTime;
-        const hour  = o.heure || o.hour || o.pickup || o.slot || o.Horaire || '';
-        const id    = o.id || o.ID || o.num || o.Num || '';
-        const name  = o.name || o.client || o.Client || '';
-        const phone = o.phone || o.tel || o.Telephone || '';
-        const items = o.items || o.panier || o.Panier || o.pizzas || o.Pizzas || '';
-        const total = o.total || o.Total || 0;
-        const status= o.status || o.Statut || 'nouvelle';
-
-        // filtre 24h
         const d = when ? new Date(when) : null;
         if(d && !within24h(d)) continue;
 
-        const hh = d ? new Intl.DateTimeFormat('fr-FR', { hour:'2-digit', minute:'2-digit' }).format(d) : '';
+        const id    = o.id || o.ID || '';
+        const name  = o.name || o.client || '';
+        const tel   = o.phone || o.tel || '';
+        const hora  = o.heure || o.hour || o.pickup || o.slot || '';
+        const items = o.items || o.panier || o.pizzas || '';
+        const total = o.total || 0;
+        const stat  = o.status || 'nouvelle';
+        const hh = d ? new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'}).format(d) : '';
+
+        if(id && !seen.has(id)) newly.push(id);
 
         out.push(`
           <tr data-id="${id}">
             <td>${hh}</td>
             <td class="mono">${id}</td>
-            <td>${name||''}</td>
-            <td class="mono">${phone||''}</td>
-            <td>${hour||''}</td>
-            <td>${(Array.isArray(items)? items.join(', ') : items)||''}</td>
-            <td class="mono">${fmtMoney(total)}</td>
-            <td>${pill(status)}</td>
+            <td>${name}</td>
+            <td class="mono">${tel}</td>
+            <td>${hora}</td>
+            <td>${(Array.isArray(items)?items.join(', '):items)}</td>
+            <td class="mono">${fmtEur(total)}</td>
+            <td>${pill(stat)}</td>
             <td class="row-actions">
               <button class="btn green"  data-action="ready"  data-id="${id}">Prête</button>
               <button class="btn"         data-action="done"   data-id="${id}">Remise</button>
@@ -200,99 +195,65 @@
         `);
       }
       rows.innerHTML = out.join('') || `<tr><td colspan="9" class="muted" style="text-align:center;padding:18px">Aucune commande pour les dernières 24 h.</td></tr>`;
+
+      // bip + mémorisation
+      if(newly.length){
+        try{ beep.currentTime = 0; beep.play().catch(()=>{});}catch{}
+        const s = getSeen(); newly.forEach(id=>s.add(id)); setSeen(s);
+      }
     }
 
-    async function loadOrders(manual=false){
-      const {api, adm} = readConfig();
-      if(!validateApiOrWarn(api)) return;
-
+    async function load(){
+      const {api,adm}=readConfig();
+      if(!validApi(api)) return;
       try{
         setStamp('Chargement…');
-        const url = api + '?list=1' + (adm ? '&admin=' + encodeURIComponent(adm) : '');
+        const url = api + '?list=1' + (adm?('&admin='+encodeURIComponent(adm)):'');
         const data = await fetchJSON(url);
         const list = data.orders || data.commandes || data.rows || data || [];
-        renderRows(list);
+        render(list);
         setStamp('OK', true);
-      } catch(err){
-        console.error(err);
-        setStamp('Erreur réseau (timeout)');
-      }
+      }catch(e){ console.error(e); setStamp('Erreur réseau (timeout)'); }
     }
 
-    async function updateStatus(id, status){
-      const {api, adm} = readConfig();
-      if(!validateApiOrWarn(api) || !id) return;
-
-      // Optimiste : on met à jour tout de suite l’affichage
+    async function updateStatus(id,status){
+      const {api,adm}=readConfig(); if(!validApi(api)||!id) return;
       const tr = rows.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-      if(tr){
-        const td = tr.children[7];
-        td.innerHTML = pill(status);
-      }
-
-      // Appel API si dispo (adapter côté Apps Script si besoin)
+      if(tr){ tr.children[7].innerHTML = pill(status); }
       try{
-        await fetchJSON(api, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ action:'status', id, status, admin: adm || undefined })
+        await fetchJSON(api,{method:'POST',headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'status',id,status,admin:adm||undefined})
         });
-      }catch(e){
-        console.warn('Update status côté API non disponible :', e.message);
-      }
+      }catch{}
     }
 
-    function bindActions(){
-      rows.addEventListener('click', (e)=>{
-        const btn = e.target.closest('button[data-action]');
-        if(!btn) return;
-        const id = btn.getAttribute('data-id');
-        const action = btn.getAttribute('data-action'); // ready | done | cancel
-        const map = { ready:'prête', done:'remise', cancel:'annulée' };
-        updateStatus(id, map[action] || action);
-      });
-    }
+    rows.addEventListener('click',e=>{
+      const b=e.target.closest('button[data-action]'); if(!b) return;
+      const id=b.dataset.id, map={ready:'prête',done:'remise',cancel:'annulée'};
+      updateStatus(id,map[b.dataset.action]||b.dataset.action);
+    });
 
-    function insertDemoRow(){
-      const demo = {
-        date: nowISO(),
-        id: 'DEMO-' + Math.random().toString(36).slice(2,7).toUpperCase(),
-        client: 'Test JSONP',
-        phone: '06 00 00 00 00',
-        horaire: '19:00',
-        pizzas: 'Margharita × 1',
-        total: 7.50,
-        status: 'nouvelle'
-      };
-      renderRows([demo]); // affichage local
+    // Démo : garde la ligne jusqu’au prochain refresh manuel/auto (pas d’auto-clear)
+    document.getElementById('demo').addEventListener('click',()=>{
+      const demo=[{date:new Date().toISOString(),id:'DEMO-'+Math.random().toString(36).slice(2,7).toUpperCase(),client:'Test JSONP',
+        phone:'06 00 00 00 00',heure:'19:00',pizzas:'Margharita × 1',total:7.5,status:'nouvelle'}];
+      render(demo);
+      try{ beep.currentTime=0; beep.play().catch(()=>{});}catch{}
       setStamp('Démo', true);
-      // Recharge la vraie liste après 6 s
-      setTimeout(loadOrders, 6000);
-    }
+    });
 
-    // --- Init ----------------------------------------------------------------
-    (function init(){
-      // Préremplissage depuis localStorage
-      const apiSaved = localStorage.getItem('pizzamigo_api') || '';
-      const admSaved = localStorage.getItem('pizzamigo_admin') || '';
-      if(apiSaved) $('#api').value = apiSaved;
-      if(admSaved) $('#adm').value = admSaved;
+    document.getElementById('refresh').addEventListener('click',load);
+    document.getElementById('save').addEventListener('click',()=>{
+      writeConfig({api:document.getElementById('api').value.trim(),adm:document.getElementById('adm').value.trim()});
+      location.reload();
+    });
 
-      // Boutons
-      $('#save').addEventListener('click', ()=>{
-        const api = $('#api').value.trim();
-        const adm = $('#adm').value.trim();
-        writeConfig({api, adm});
-        location.reload();
-      });
-
-      $('#refresh').addEventListener('click', ()=> loadOrders(true));
-      $('#demo').addEventListener('click', insertDemoRow);
-
-      bindActions();
-      loadOrders();
-      // Auto-refresh
-      setInterval(loadOrders, 30000);
+    // init
+    (function(){
+      const apiSaved=localStorage.getItem('pizzamigo_api')||''; if(apiSaved) $('#api').value=apiSaved;
+      const admSaved=localStorage.getItem('pizzamigo_admin')||''; if(admSaved) $('#adm').value=admSaved;
+      load();
+      setInterval(load, 30000); // refresh 30 s
     })();
   })();
   </script>
