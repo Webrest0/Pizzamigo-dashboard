@@ -18,21 +18,16 @@
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
   table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px;vertical-align:middle}
-  th{font-weight:700;text-align:left}
+  th,td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px;vertical-align:middle;text-align:left}
   .tag{padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
   .tag.new{background:#233048}
   .price{white-space:nowrap}
   .actions .btn{padding:6px 10px}
-  .badge{display:inline-flex;gap:6px;align-items:center}
-  .dot{width:8px;height:8px;border-radius:50%;background:#36d36a;box-shadow:0 0 6px #36d36a}
-  /* Mobile */
   @media (max-width:740px){
     .hide-sm{display:none}
     table{font-size:14px}
     .actions .btn{padding:6px 8px}
   }
-  /* panneau erreurs */
   #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
@@ -51,7 +46,7 @@
       <button class="btn" id="refresh">Actualiser</button>
       <button class="btn" id="demo">Démo</button>
       <span class="muted" id="status">–</span>
-      <span class="badge" style="margin-left:auto">
+      <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <button class="btn" id="soundBtn">🔔 Activer le son</button>
         <label class="muted">Son :</label>
         <input type="range" min="0" max="1" step="0.05" id="vol" value="0.7" style="width:120px">
@@ -79,7 +74,6 @@
   </div>
 </div>
 
-<!-- erreurs JS -->
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
@@ -91,21 +85,10 @@ window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e
 /* ===== State ===== */
 const S = {
   api: localStorage.getItem('pizz_api') || '',
-  adm: localStorage.getItem('pizz_adm') || 'PIZZAMIGO-ADMIN-123', // <- mets ici EXACTEMENT la clé côté Apps Script
-  orders: new Map(), // id -> order
+  adm: localStorage.getItem('pizz_adm') || 'PIZZAMIGO-ADMIN-123',
+  orders: new Map(),
   audioReady:false,
-  bell: (() => {
-    // bip cloche très court (WebAudio)
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const ding = () => {
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type='triangle'; o.frequency.value=880; // aigue court
-      g.gain.value=0; g.gain.linearRampToValueAtTime(+document.getElementById('vol').value, ctx.currentTime+0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.35);
-      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.35);
-    };
-    return {ctx, play:ding};
-  })()
+  ctx:null
 };
 
 document.getElementById('api').value = S.api;
@@ -113,27 +96,35 @@ document.getElementById('adm').value = S.adm;
 
 /* ===== Helpers ===== */
 const € = v => Number(v).toFixed(2).replace('.', ',')+' €';
-const fmtTime = iso => {
-  // accepte "19:30" ou Date-like; sors "19:30"
-  if (!iso) return '';
-  if (/^\d{2}:\d{2}$/.test(iso)) return iso;
-  try{ const d = new Date(iso); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
-  catch{ return String(iso); }
+const hhmm = x => {
+  if(!x) return '';
+  if(/^\d{2}:\d{2}$/.test(x)) return x;
+  const d = new Date(x); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 };
-
-function rowHtml(o){
-  const items = (o.items||o.basket||[]).map(it=>{
+function ring(){
+  if(!S.audioReady||!S.ctx) return;
+  const g=S.ctx.createGain(), o=S.ctx.createOscillator();
+  o.type='triangle'; o.frequency.value=880;
+  g.gain.value=0.0001;
+  g.gain.exponentialRampToValueAtTime(Math.max(0.01, +document.getElementById('vol').value), S.ctx.currentTime+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, S.ctx.currentTime+0.35);
+  o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+0.35);
+}
+function itemsText(o){
+  const arr=(o.items||o.basket||[]);
+  return arr.map(it=>{
     const sup = it.supplType ? ` (+1€ ${it.supplType})` : '';
     return `${it.name} × ${it.qty||1}${sup}`;
   }).join('<br>');
-  return `
-  <tr data-id="${o.id}">
+}
+function rowHtml(o){
+  return `<tr data-id="${o.id}">
     <td>${o.time||o.when||''}</td>
     <td class="hide-sm">${o.id||''}</td>
     <td class="hide-sm">${o.name||o.client||''}</td>
     <td class="hide-sm">${o.phone||''}</td>
-    <td>${fmtTime(o.slot||o.horaire||o.when||'')}</td>
-    <td>${items||'-'}</td>
+    <td>${hhmm(o.slot||o.horaire||o.when||'')}</td>
+    <td>${itemsText(o)||'-'}</td>
     <td class="price">${€(o.total||o.total11||0)}</td>
     <td><span class="tag new">${o.status||'new'}</span></td>
     <td class="actions">
@@ -144,69 +135,62 @@ function rowHtml(o){
     </td>
   </tr>`;
 }
-
-/* ===== Rendering ===== */
-function upsertRows(list){
-  const body = document.getElementById('rows');
-  let added = 0;
-  list.forEach(o=>{
+function upsert(list){
+  const body=document.getElementById('rows'); let added=0;
+  (list||[]).forEach(o=>{
     if(!S.orders.has(o.id)){
-      S.orders.set(o.id, o);
-      body.insertAdjacentHTML('afterbegin', rowHtml(o));
+      S.orders.set(o.id,o);
+      body.insertAdjacentHTML('afterbegin',rowHtml(o));
       added++;
     }
   });
-  if(added>0 && S.audioReady) S.bell.play();
+  if(added>0) ring();
 }
 
-/* ===== API calls ===== */
+/* ===== API ===== */
 async function apiGet(params){
-  const u = new URL(S.api);
+  const base=(document.getElementById('api').value||S.api||'').trim();
+  if(!base) throw new Error('URL API manquante');
+  const u = new URL(base);
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r = await fetch(u, {method:'GET', cache:'no-store'});
-  const t = await r.text();
-  try{ return JSON.parse(t); } catch{ throw new Error(t); }
+  const r = await fetch(u,{method:'GET',cache:'no-store'});
+  const t = await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
 }
-
 async function apiPost(obj){
-  // IMPORTANT: text/plain pour éviter CORS des Apps Script
-  const r = await fetch(S.api, {
+  const base=(document.getElementById('api').value||S.api||'').trim();
+  if(!base) throw new Error('URL API manquante');
+  const r = await fetch(base,{
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify(obj)
   });
-  const t = await r.text();
-  try{ return JSON.parse(t); } catch{ throw new Error(t); }
+  const t=await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
 }
 
 /* ===== Actions ===== */
 async function refreshNow(){
-  if(!S.api){ alert('Renseigne l’URL de l’API.'); return; }
   try{
     const data = await apiGet({list:'today'});
     if(!data.ok) throw new Error(data.error||'Réponse invalide');
-    upsertRows(data.orders||[]);
+    upsert(data.orders||[]);
     document.getElementById('status').textContent = new Date().toTimeString().slice(0,8)+' — OK';
   }catch(e){
-    document.getElementById('status').textContent = 'Erreur réseau';
+    document.getElementById('status').textContent='Erreur réseau';
     showErr(String(e));
   }
 }
-
 async function sendDemo(){
-  if(!S.api){ alert('Renseigne l’URL de l’API.'); return; }
   try{
-    const demo = {
-      adminKey: S.adm,          // <-- vérifie que ça matche la clé côté Apps Script
-      demo: true,               // flag côté serveur
-      name: 'Test JSONP',
-      phone: '600000000',
-      slot: '19:30',
-      items: [{name:'Margharita', qty:1, price:8.50, supplType:'viande', supplPrice:1}],
-      total: 8.50,
-      source: 'site'
-    };
-    const res = await apiPost(demo);
+    const res = await apiPost({
+      adminKey:(document.getElementById('adm').value||S.adm||'').trim(),
+      demo:true,
+      name:'Test JSONP',
+      phone:'600000000',
+      slot:'19:30',
+      items:[{name:'Margharita',qty:1,price:8.50,supplType:'viande',supplPrice:1}],
+      total:8.50,
+      source:'site'
+    });
     if(!res.ok) throw new Error(res.error||'Échec envoi démo');
     await refreshNow();
   }catch(e){
@@ -214,45 +198,39 @@ async function sendDemo(){
     showErr(String(e));
   }
 }
-
 function tableClick(e){
-  const btn = e.target.closest('button[data-act]'); if(!btn) return;
-  const tr = e.target.closest('tr'); const id = tr?.dataset.id; if(!id) return;
-  const act = btn.dataset.act;
-  if(act==='remove'){ S.orders.delete(id); tr.remove(); return; }
-  // changement de statut -> POST
-  apiPost({adminKey:S.adm, setStatus:true, id, status: act})
-    .then(r=>{
-      if(!r.ok) throw new Error(r.error||'setStatus fail');
-      tr.querySelector('.tag').textContent = act;
-    })
+  const b=e.target.closest('button[data-act]'); if(!b) return;
+  const tr=e.target.closest('tr'); const id=tr?.dataset.id; if(!id) return;
+  const act=b.dataset.act;
+  if(act==='remove'){S.orders.delete(id); tr.remove(); return;}
+  apiPost({adminKey:(document.getElementById('adm').value||S.adm||'').trim(), setStatus:true, id, status:act})
+    .then(r=>{ if(!r.ok) throw new Error(r.error||'setStatus'); tr.querySelector('.tag').textContent=act; })
     .catch(err=>showErr(String(err)));
 }
 
-/* ===== Polling ===== */
-let timer=null;
-function startPolling(){ stopPolling(); timer=setInterval(refreshNow, 5000);}
-function stopPolling(){ if(timer) clearInterval(timer); }
+/* ===== Poll ===== */
+let timer=null; function start(){stop(); timer=setInterval(refreshNow,5000);} function stop(){ if(timer) clearInterval(timer); }
 
-/* ===== UI wiring ===== */
+/* ===== UI ===== */
 document.getElementById('save').onclick=()=>{
-  S.api = document.getElementById('api').value.trim();
-  S.adm = document.getElementById('adm').value.trim()||'PIZZAMIGO-ADMIN-123';
-  localStorage.setItem('pizz_api', S.api);
-  localStorage.setItem('pizz_adm', S.adm);
+  S.api=(document.getElementById('api').value||'').trim();
+  S.adm=(document.getElementById('adm').value||'').trim()||'PIZZAMIGO-ADMIN-123';
+  localStorage.setItem('pizz_api',S.api); localStorage.setItem('pizz_adm',S.adm);
   document.getElementById('status').textContent='Paramètres enregistrés';
 };
 document.getElementById('refresh').onclick=refreshNow;
 document.getElementById('demo').onclick=sendDemo;
-document.getElementById('tbl').addEventListener('click', tableClick);
-document.getElementById('vol').oninput=()=>{}; // volume lu à la volée
+document.getElementById('tbl').addEventListener('click',tableClick);
 document.getElementById('soundBtn').onclick=async ()=>{
-  try{ await S.bell.ctx.resume(); S.audioReady=true; document.getElementById('soundBtn').disabled=true; document.getElementById('soundBtn').textContent='🔔 Son activé'; }
-  catch(e){ showErr(String(e)); }
+  try{
+    if(!S.ctx){ S.ctx = new (window.AudioContext||window.webkitAudioContext)(); }
+    await S.ctx.resume(); S.audioReady=true;
+    document.getElementById('soundBtn').disabled=true; document.getElementById('soundBtn').textContent='🔔 Son activé';
+  }catch(e){ showErr(String(e)); }
 };
 
 /* ===== Boot ===== */
-refreshNow(); startPolling();
+refreshNow(); start();
 </script>
 </body>
 </html>
