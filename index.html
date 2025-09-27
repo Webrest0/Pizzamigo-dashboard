@@ -95,26 +95,45 @@ const cfg = LS.load();
 if (cfg.api) apiInput.value = cfg.api;
 if (cfg.adm) admInput.value = cfg.adm;
 
-// ---------- AUDIO (bip fort) ----------
-function beepLoud(times = 2, freq = 880, durMs = 300) {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    let when = ctx.currentTime;
-    for (let i=0;i<times;i++){
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.001, when);
-      gain.gain.exponentialRampToValueAtTime(0.75, when + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, when + durMs/1000);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(when);
-      osc.stop(when + durMs/1000);
-      when += (durMs+120)/1000;
+<!-- Boutons -->
+<div class="row">
+  <button id="save">Enregistrer</button>
+  <button id="refresh">Actualiser</button>
+  <button id="demo">Démo</button>
+  <button id="enable-audio">Activer le son</button>
+</div>
+
+<script>
+  // ====== AUDIO ======
+  const bell = new Audio('sounds/pizzaiolo.mp3'); // ton son 5s
+  bell.preload = 'auto';
+  bell.volume = 1.0;           // volume à fond
+  bell.playbackRate = 1;       // vitesse normale
+  let audioReady = false;
+
+  document.getElementById('enable-audio').addEventListener('click', async () => {
+    try {
+      await bell.play();       // premier play pour "débloquer" l’audio
+      bell.pause();
+      bell.currentTime = 0;
+      audioReady = true;
+      alert('Son activé ✅');
+    } catch (e) {
+      alert("Clique encore si le son n'est pas activé.");
     }
-  } catch(e){}
-}
+  });
+
+  // Appelle cette fonction quand une nouvelle commande arrive
+  function ding() {
+    if (audioReady) {
+      bell.currentTime = 0;
+      bell.play().catch(()=>{});
+    }
+  }
+
+  // Exemple: dans ton code qui insère les commandes, quand tu détectes une NOUVELLE:
+  // if (isNewOrder) ding();
+</script>
 
 // ---------- STATE ----------
 let known = new Map();   // id -> order
