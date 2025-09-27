@@ -1,200 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard — PIZZ’AMIGO</title>
-  <style>
-    :root{
-      --bg:#0e1116; --panel:#161b22; --ink:#e6edf3; --muted:#a9b1ba;
-      --line:#2d333b; --brand:#2ea043; --warn:#d29922; --danger:#f85149;
-      --pill:#30363d; --pill-in:#0d1117;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;
-      color:var(--ink); background:radial-gradient(60rem 60rem at 10% -10%, #1b2330 0%, var(--bg) 45%);
-    }
-    .wrap{max-width:1100px; margin:28px auto; padding:0 16px}
-    h1{margin:0 0 12px; font-size:22px; letter-spacing:.4px}
-    .bar{
-      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
-      background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px;
-      position:sticky; top:8px; z-index:5; box-shadow:0 8px 20px rgba(0,0,0,.15);
-    }
-    label{font-size:12px; color:var(--muted)}
-    .row{display:flex; gap:8px; width:100%; flex-wrap:wrap}
-    .field{display:flex; flex-direction:column; gap:6px; min-width:280px; flex:1 1 360px}
-    input{
-      background:var(--pill-in); border:1px solid var(--line); color:var(--ink);
-      padding:10px 12px; border-radius:8px; font-size:14px; width:100%;
-    }
-    .btn{
-      border:1px solid var(--line); background:var(--pill);
-      color:var(--ink); padding:10px 14px; border-radius:8px; cursor:pointer;
-      font-weight:600; transition:.15s; user-select:none;
-    }
-    .btn:hover{transform:translateY(-1px)}
-    .btn.save{background:linear-gradient(180deg,#1f6feb,#1158c7)}
-    .btn.refresh{background:linear-gradient(180deg,#353b44,#262b33)}
-    .btn.demo{background:linear-gradient(180deg,#238636,#1f7a31)}
-    .status{
-      margin-left:auto; font-size:12px; padding:6px 10px; border-radius:999px;
-      background:#262b33; color:#9fbafc; border:1px solid #3b4552; white-space:nowrap
-    }
-    .card{margin-top:14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
-    table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
-    thead th{
-      text-align:left; font-size:12px; color:var(--muted); background:#0f141b;
-      padding:10px 12px; border-bottom:1px solid var(--line); position:sticky; top:60px; z-index:2;
-    }
-    tbody td{border-top:1px solid var(--line); padding:10px 12px; vertical-align:top}
-    .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--pill); font-size:12px; color:var(--ink)}
-    .price{font-weight:700}
-    .st-new{background:#0f1a12; border-color:#214d2e; color:#4ae38a}
-    .st-ready{background:#1b1a0f; border-color:#4d4721; color:#d6b04a}
-    .st-done{background:#0f141a; border-color:#21435a; color:#7ac6ff}
-    .st-cancel{background:#1a0f10; border-color:#5a2130; color:#ff9aaa}
-    .act{display:flex; gap:6px; flex-wrap:wrap}
-    .small{font-size:12px; color:var(--muted)}
-    .btn.sm{padding:6px 10px; font-weight:600}
-    .btn.ready{background:linear-gradient(180deg,#b8871a,#9d7418)}
-    .btn.done{background:linear-gradient(180deg,#2563eb,#1e4ecb)}
-    .btn.cancel{background:linear-gradient(180deg,#b4232e,#931a24)}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — PIZZ’AMIGO</title>
+<style>
+  :root{--bg:#0d1116;--card:#121822;--text:#e6edf3;--mut:#9fb0c3;--b:#1c2430;--ring:#283244;
+        --ok:#1db954;--warn:#e9a26b;--bad:#ef5350;--label:#1a2230}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto}
+  .wrap{max-width:1100px;margin:20px auto;padding:0 14px}
+  h1{margin:0 0 10px}
+  .panel{background:var(--card);border:1px solid var(--b);border-radius:14px;padding:12px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input,button{appearance:none;border:1px solid var(--b);background:#0f141b;color:var(--text);padding:9px 12px;border-radius:10px}
+  button{cursor:pointer;font-weight:700}
+  button.primary{background:var(--ok);border-color:transparent;color:#06270f}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border-top:1px solid var(--b);padding:10px;vertical-align:top}
+  th{background:var(--label);text-align:left}
+  .mono{font-variant-numeric:tabular-nums}
+  .badge{padding:3px 7px;border-radius:999px;border:1px solid var(--b);background:#101823}
+  .status-new{background:#192639;border-color:#2a3b52}
+  .status-prep{background:#2a243d;border-color:#3a2f58}
+  .status-done{background:#143a2a;border-color:#245c41}
+  .actions button{margin-right:6px}
+  .small{font-size:12px;color:var(--mut)}
+  #er{display:none;margin-top:10px;background:#2a1619;border:1px solid #513139;border-radius:10px;padding:10px}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Dashboard — PIZZ’AMIGO</h1>
+<div class="wrap">
+  <h1>Dashboard — <b>PIZZ’AMIGO</b></h1>
 
-    <div class="bar">
-      <div class="row">
-        <div class="field">
-          <label>API</label>
-          <input id="api" placeholder="https://script.google.com/macros/s/.../exec" />
-          <div class="small">Colle l’URL <b>/exec</b> de l’Apps Script.</div>
-        </div>
-        <div class="field" style="max-width:360px">
-          <label>Clé admin (facultatif)</label>
-          <input id="adm" placeholder="ex: PIZZAMIGO-ADMIN-123" />
-          <div class="small">Stockée localement.</div>
-        </div>
-      </div>
-      <button class="btn save" id="save">Enregistrer</button>
-      <button class="btn refresh" id="refresh">Actualiser</button>
-      <button class="btn demo" id="demo">Démo</button>
-      <span class="status" id="status">—</span>
+  <div class="panel">
+    <div class="row">
+      <input id="api" style="min-width:420px" placeholder="URL de l’API (exec)">
+      <input id="adm" placeholder="Clé admin (facultatif)">
+      <button id="save">Enregistrer</button>
+      <button id="refresh">Actualiser</button>
+      <button id="demo">Démo</button>
+      <span id="last" class="small">—</span>
     </div>
-
-    <div class="card">
-      <table>
-        <thead>
-        <tr>
-          <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th>
-          <th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th>Action</th>
-        </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="9" class="small">Aucune commande sur les dernières 24 h.</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <div id="er"></div>
   </div>
 
-  <!-- TOUT le JavaScript est **dans** cette balise script -->
-  <script>
-    const $ = s=>document.querySelector(s);
-    const $tbody = $('#tbody'), $status = $('#status');
-    const STATE = new Map(); // id -> order
+  <div class="panel" style="margin-top:12px">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>Heure</th><th>ID</th><th>Client</th><th>Téléphone</th><th>Horaire</th><th>Pizzas</th><th>Total</th><th>Statut</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="body"><tr><td colspan="9" class="small">Aucune commande sur les dernières 24 h.</td></tr></tbody>
+    </table>
+  </div>
+</div>
 
-    // bip 5s fort
-    function beep(){
-      try{
-        const ctx = new (window.AudioContext||window.webkitAudioContext)();
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type='square'; o.frequency.value=740; g.gain.value=0.25;
-        o.connect(g); g.connect(ctx.destination); o.start();
-        setTimeout(()=>{g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+.1);o.stop(ctx.currentTime+.12);},5000);
-      }catch(e){}
-    }
-    const fmt€ = n => (Number(n)||0).toFixed(2).replace('.',',')+' €';
-    const nowHHMM = () => new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+<div id="errpane" style="display:none;position:fixed;right:10px;bottom:10px;background:#362126;border:1px solid #5a3038;padding:10px;border-radius:10px;color:#ffd7dc;max-width:90vw">
+  <b>Erreur</b><pre id="errmsg" style="white-space:pre-wrap;margin:6px 0 0 0"></pre>
+</div>
 
-    function rowHtml(o){
-      const pizzas = o.items?.map(p=>`${p.name}${p.suppl?` (+${p.suppl} suppl.)`:''} × ${p.qty}`).join(' · ') || o.pizzas || '';
-      const tag = s => s==='nouvelle'?'st-new':s==='prête'?'st-ready':s==='terminée'?'st-done':s==='annulée'?'st-cancel':'';
-      return `
-        <tr data-id="${o.id}">
-          <td>${o.when||nowHHMM()}</td>
-          <td><span class="pill">${o.id}</span></td>
-          <td>${o.name||''}</td>
-          <td>${o.phone||''}</td>
-          <td><span class="pill">${o.slot||o.time||''}</span></td>
-          <td>${pizzas}</td>
-          <td class="price">${fmt€(o.total||o.total_eur||0)}</td>
-          <td><span class="pill ${tag(o.status||'nouvelle')}">${o.status||'nouvelle'}</span></td>
-          <td class="act">
-            <button class="btn sm ready" data-act="ready">Prête</button>
-            <button class="btn sm done" data-act="done">Terminée</button>
-            <button class="btn sm cancel" data-act="cancel">Annuler</button>
-          </td>
-        </tr>`;
-    }
-    function render(list){
-      if(!list?.length){ $tbody.innerHTML = '<tr><td colspan="9" class="small">Aucune commande sur les dernières 24 h.</td></tr>'; return; }
-      $tbody.innerHTML = list.map(rowHtml).join('');
-      $tbody.querySelectorAll('button[data-act]').forEach(btn=>{
-        btn.addEventListener('click', async e=>{
-          const tr = e.currentTarget.closest('tr'); const id = tr.dataset.id;
-          const act = e.currentTarget.dataset.act;
-          const pill = tr.querySelector('td:nth-child(8) .pill');
-          pill.textContent = act==='ready'?'prête':act==='done'?'terminée':'annulée';
-          pill.className = 'pill ' + (act==='ready'?'st-ready':act==='done'?'st-done':'st-cancel');
-          const api=$('#api').value.trim(); if(!api) return;
-          const admin=$('#adm').value.trim();
-          try{ await fetch(api+`?act=${act}&id=${encodeURIComponent(id)}${admin?`&admin=${encodeURIComponent(admin)}`:''}`);}
-          catch(_){}
-        });
-      });
-    }
+<script>
+const showErr=(m)=>{document.getElementById('errpane').style.display='block';document.getElementById('errmsg').textContent=m};
+addEventListener('error',e=>showErr(e.message));
+addEventListener('unhandledrejection',e=>showErr(String(e.reason&&e.reason.message||e.reason)));
 
-    async function load(){
-      const api = $('#api').value.trim();
-      if(!api){ $status.textContent='Erreur: renseigne l’URL de l’API'; return; }
-      $status.textContent='Chargement…';
-      try{
-        const r = await fetch(api+'?orders=1',{cache:'no-store'});
-        const j = await r.json();
-        if(!j.ok) throw new Error(j.error||'Réponse invalide');
-        const orders = j.orders||[];
-        let hasNew=false; for(const o of orders){ if(!STATE.has(o.id)) hasNew=true; STATE.set(o.id,o); }
-        if(hasNew) beep();
-        render(orders);
-        $status.textContent=`Dernière mise à jour — ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} — OK`;
-      }catch(err){
-        $status.textContent='Erreur réseau';
-        console.error(err);
-      }
-    }
+/* === CONFIG (MODIFIE ICI si besoin) === */
+const DEFAULT_API = "https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec"; // <— MODIFIE ICI
 
-    function addDemo(){
-      const id='DEMO-'+Math.random().toString(16).slice(2,6).toUpperCase();
-      const demo={id,when:nowHHMM(),name:'Test JSONP',phone:'06 00 00 00 00',slot:'19:00',items:[{name:'Margharita',qty:1}],total_eur:7.5,status:'nouvelle'};
-      const list=[demo,...Array.from(STATE.values())]; STATE.set(id,demo); render(list); beep();
-      $status.textContent=`Dernière mise à jour — ${nowHHMM()} — Démo ajoutée`;
-      setTimeout(()=>{STATE.delete(id); render(Array.from(STATE.values()));},5000);
-    }
+/* === ÉTAT === */
+const S = { api: localStorage.getItem('PA_API')||DEFAULT_API, adm: localStorage.getItem('PA_ADM')||'', rows:new Map(), lastIds:new Set() };
+document.getElementById('api').value = S.api; document.getElementById('adm').value = S.adm;
 
-    // init + stockage local
-    (function(){
-      const sApi=localStorage.getItem('pizzamigo_api')||'', sAdm=localStorage.getItem('pizzamigo_admin')||'';
-      $('#api').value=sApi; $('#adm').value=sAdm;
-      $('#save').addEventListener('click',()=>{localStorage.setItem('pizzamigo_api',$('#api').value.trim());localStorage.setItem('pizzamigo_admin',$('#adm').value.trim());$status.textContent='Enregistré';});
-      $('#refresh').addEventListener('click',load);
-      $('#demo').addEventListener('click',addDemo);
-      if(sApi) load();
-    })();
-  </script>
+/* === SON (5s plus fort) === */
+function ring(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const gain=ctx.createGain(); gain.gain.value=0.25; // fort mais pas saturé
+    gain.connect(ctx.destination);
+    const beep=(f,d,t)=>{const o=ctx.createOscillator();o.type='square';o.frequency.value=f;o.connect(gain);o.start(t);o.stop(t+d);}
+    const now=ctx.currentTime; // séquence 5s
+    beep(880,.2,now+0.0);beep(660,.2,now+.25);beep(990,.2,now+.5);beep(770,.2,now+.75);
+    beep(880,.2,now+1.0);beep(660,.2,now+1.25);beep(990,.2,now+1.5);beep(770,.2,now+1.75);
+    beep(1100,.25,now+2.1);beep(1100,.25,now+2.45);beep(1100,.25,now+2.8);beep(880,.4,now+3.2);beep(660,.6,now+3.8);
+    setTimeout(()=>ctx.close(),5200);
+  }catch{}
+}
+
+/* === RENDU TABLE === */
+const tbody = document.getElementById('body');
+const euro = v => Number(v).toFixed(2).replace('.',',')+' €';
+
+function renderRow(o){
+  const tr=document.createElement('tr'); tr.dataset.id=o.id;
+  const pizzas = (o.basket||o.items||[]).map(x=>`${x.name} × ${x.qty||1}`).join(', ');
+  tr.innerHTML = `
+    <td class="mono">${(o.when||'').substring(11,16)}</td>
+    <td class="mono">${o.id||'-'}</td>
+    <td>${o.name||'-'}</td>
+    <td class="mono">${o.phone||'-'}</td>
+    <td class="mono">${o.slot||'-'}</td>
+    <td>${pizzas||'-'}</td>
+    <td class="mono">${euro(o.total||0)}</td>
+    <td><span class="badge status-${o.status||'new'}">${o.status||'new'}</span></td>
+    <td class="actions">
+      <button data-a="prep">Prête</button>
+      <button data-a="done">Terminée</button>
+      <button data-a="cancel">Annuler</button>
+      <button data-a="hide">X</button>
+    </td>`;
+  tr.querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>action(o.id,b.dataset.a,tr);
+  });
+  return tr;
+}
+
+function addOrUpdate(o, isNew=false){
+  if(S.rows.has(o.id)){
+    const old=S.rows.get(o.id); tbody.replaceChild(renderRow(o), old); S.rows.set(o.id, tbody.querySelector(`tr[data-id="${o.id}"]`));
+  }else{
+    const r=renderRow(o); if(tbody.firstElementChild && tbody.firstElementChild.children.length===1) tbody.innerHTML='';
+    tbody.prepend(r); S.rows.set(o.id,r);
+    if(isNew) ring();
+  }
+}
+
+/* === CHARGER LISTE === */
+async function refresh(){
+  try{
+    const u = new URL(S.api); u.searchParams.set('list','1');
+    const t0=performance.now();
+    const res = await fetch(u.toString(), {mode:'cors'});
+    const data = await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||('HTTP '+res.status));
+    const orders = data.orders||[];
+    const todayIds = new Set();
+    orders.forEach(o=>{
+      todayIds.add(o.id); const isNew=!S.lastIds.has(o.id); addOrUpdate(o,isNew);
+    });
+    S.lastIds = todayIds;
+    document.getElementById('last').textContent = `Dernière mise à jour — ${new Date().toLocaleTimeString()} — OK`;
+  }catch(err){
+    document.getElementById('last').textContent = `Dernière mise à jour — Erreur`;
+    showErr(String(err));
+  }
+}
+
+/* === ACTIONS === */
+async function action(id, a, rowEl){
+  if(a==='hide'){ rowEl.remove(); S.rows.delete(id); return; }
+  try{
+    const payload = { action:'status', id, status: a, admin:S.adm||'' };
+    const res = await fetch(S.api, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if(!res.ok||!data.ok) throw new Error(data.error||('HTTP '+res.status));
+    refresh();
+  }catch(err){ showErr(String(err)); }
+}
+
+/* === DEMO (injection locale, pas API) === */
+document.getElementById('demo').onclick=()=>{
+  const id='DEMO-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  const fake={ id, when:new Date().toISOString(), name:'Test JSONP', phone:'06 00 00 00 00', slot:'19:00',
+               basket:[{name:'Margharita',qty:1}], total:7.5, status:'new' };
+  addOrUpdate(fake, true);
+  document.getElementById('last').textContent=`Dernière mise à jour — ${new Date().toLocaleTimeString()} — Démo ajoutée`;
+};
+
+/* === BOUTONS ENTÊTE === */
+document.getElementById('save').onclick=()=>{
+  S.api=document.getElementById('api').value.trim()||DEFAULT_API;
+  S.adm=document.getElementById('adm').value.trim();
+  localStorage.setItem('PA_API',S.api); localStorage.setItem('PA_ADM',S.adm);
+  document.getElementById('last').textContent='Sauvé localement.';
+};
+document.getElementById('refresh').onclick=refresh;
+
+/* === INIT === */
+refresh();
+</script>
 </body>
 </html>
