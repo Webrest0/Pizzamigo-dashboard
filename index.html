@@ -85,7 +85,7 @@
 </div>
 
 <!-- cloche -->
-<audio id="bell" preload="auto">
+<audio id="bell" preload="auto" crossorigin="anonymous">
   <source src="https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.mp3" type="audio/mpeg">
 </audio>
 
@@ -106,6 +106,12 @@ const btnTest   = document.getElementById('test-audio');
 
 let seenIds = new Set();
 
+/* ===== HDC persistant (par ID) ===== */
+const HDC_KEY = 'pizzamigo_hdc_by_id';
+function loadHDC(){ try{return JSON.parse(localStorage.getItem(HDC_KEY)||'{}');}catch{return{};} }
+function saveHDC(map){ localStorage.setItem(HDC_KEY, JSON.stringify(map)); }
+let HDC_BY_ID = loadHDC();
+
 /* ===== Helpers ===== */
 const euro=v=>(Number(v)||0).toFixed(2).replace('.',',')+' €';
 function ok(m){elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="ok">'+(m||'OK')+'</span>';}
@@ -125,11 +131,37 @@ function fmtSlot(v){
   return HHMM(d).replace(':','h');
 }
 
-/* ===== Son : activer + test ===== */
+/* ===== Son : déverrouillage + test + fallback ===== */
+let audioUnlocked=false;
+function unlockAudio(){
+  if(audioUnlocked) return;
+  try{
+    // Déverrouille les moteurs audio des navigateurs mobiles
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const buff=ctx.createBuffer(1,1,22050);
+    const src=ctx.createBufferSource(); src.buffer=buff; src.connect(ctx.destination); src.start(0);
+    ctx.resume && ctx.resume();
+    audioUnlocked=true;
+  }catch{}
+}
 function playBell(){
+  unlockAudio();
   bellEl.volume=parseFloat(volEl.value||'0.9');
   bellEl.currentTime=0;
-  return bellEl.play().catch(()=>{});
+  return bellEl.play().catch(()=>{ // fallback WebAudio (ding court)
+    try{
+      const ctx=new (window.AudioContext||window.webkitAudioContext)();
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle';
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime+0.12);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(parseFloat(volEl.value||'0.9'), ctx.currentTime+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.45);
+      o.connect(g).connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime+0.5);
+    }catch{}
+  });
 }
 btnEnable.onclick=()=>{ playBell(); localStorage.setItem('pizzamigo_sound','1'); btnEnable.style.display='none'; };
 btnTest.onclick  =()=>{ playBell(); };
@@ -146,9 +178,7 @@ function parseMaybeJSON(x){
   return x;
 }
 function pizzasFromOrder(o){
-  // Priorités : items / basket / pizzas
   let src = parseMaybeJSON(o.items) ?? parseMaybeJSON(o.basket) ?? parseMaybeJSON(o.pizzas);
-  // si src est une chaîne lisible (ex: "Margherita x 1"), on renvoie tel quel
   if(typeof src === 'string') return src;
   if(!Array.isArray(src)) return '';
   return src.map(it=>{
@@ -175,23 +205,28 @@ function render(list){
   let newCount=0;
 
   sorted.forEach((o,idx)=>{
-    const idVisu=total-idx;
+    const idVisu=total-idx;                        // 5,4,3,2,1…
     const idRaw = o.id || o.ID || o.Id || String(idVisu);
-    const isNew = !seenIds.has(idRaw);
+
+    // HDC: priorité API, sinon première apparition (persistée)
+    let when = pickTimestamp(o);
+    let dHdc = toDate(when);
+    if(!dHdc){
+      const saved = HDC_BY_ID[idRaw];
+      if(saved){ dHdc = new Date(saved); }
+      else { dHdc = new Date(); HDC_BY_ID[idRaw]=dHdc.toISOString(); saveHDC(HDC_BY_ID); }
+    }
+    const hdc  = HHMM(dHdc);
 
     const td=(label,html)=>{const c=document.createElement('td');c.setAttribute('data-label',label);c.innerHTML=html;return c;};
     const tr=document.createElement('tr');
-
-    const dHdc = toDate(pickTimestamp(o)) || new Date();   // HDC propre à chaque ligne
-    const hdc  = HHMM(dHdc);
-    const pizzas = pizzasFromOrder(o);
 
     tr.appendChild(td('ID', idVisu));
     tr.appendChild(td('Client', o.name||o.client||''));
     tr.appendChild(td('Téléphone', o.phone||''));
     tr.appendChild(td('HDC', hdc));
     tr.appendChild(td('Horaire', fmtSlot(o.slot||o.horaire||'')));
-    tr.appendChild(td('Pizzas', pizzas));
+    tr.appendChild(td('Pizzas', pizzasFromOrder(o)));
     tr.appendChild(td('Total', euro(o.total||0)));
 
     const act=document.createElement('td'); act.setAttribute('data-label','Action');
@@ -202,7 +237,7 @@ function render(list){
 
     elRows.appendChild(tr);
 
-    if(isNew){ newCount++; seenIds.add(idRaw); }
+    if(!seenIds.has(idRaw)){ newCount++; seenIds.add(idRaw); }
   });
 
   if(newCount>0 && localStorage.getItem('pizzamigo_sound')==='1'){ playBell(); }
