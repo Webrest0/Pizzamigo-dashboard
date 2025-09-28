@@ -33,12 +33,8 @@
   }
   tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
-
   .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .actions .btn{padding:6px 10px}
-
-  /* bouton croix propre et aligné */
-  .btn.icon{width:32px;height:32px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 
   /* Responsive : cartes */
   @media (max-width: 720px){
@@ -84,9 +80,9 @@
           <th style="width:78px">HDC</th>
           <th style="width:86px">Horaire</th>
           <th>Pizzas</th>
-          <th>Commentaire</th><!-- AJOUT -->
+          <th>Commentaire</th>
           <th style="width:90px">Total</th>
-          <th style="width:72px">Action</th>
+          <th style="width:80px">Action</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -160,15 +156,16 @@ function createdMs(o){
   return t;
 }
 
-/* ====== Comment utils (sécurisé) ====== */
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+/* ===== Commentaire ===== */
+function esc(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
 function getComment(o){
-  const s = o.note ?? o.comment ?? o.comments ?? o.remark ?? o.msg ?? '';
-  if(!s) return '—';
-  return esc(String(s)).replace(/\n/g,'<br>');
+  const val = o.note ?? o.comment ?? o.comments ?? o.remark ?? o.msg ?? '';
+  return val ? esc(val).replace(/\n/g,'<br>') : '—';
 }
 
-/* ====== WebAudio bell (aucun fichier externe) ====== */
+/* ====== WebAudio bell ====== */
 function ensureAudio(){
   if (AUDIO_CTX) return;
   AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
@@ -245,16 +242,13 @@ function render(list){
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    /* ===== COMMENTAIRE — AJOUT ===== */
     tr.appendChild(td('Commentaire', getComment(o)));
-
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
     const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    const x = document.createElement('button'); x.className='btn red icon'; x.textContent='✖'; x.title='Retirer définitivement';
+    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
     x.onclick = ()=>{
-      const realId = id;
-      HIDDEN.add(realId);
+      HIDDEN.add(id);
       localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN)));
       tr.remove();
     };
