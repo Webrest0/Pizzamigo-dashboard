@@ -80,7 +80,6 @@
           <th style="width:78px">HDC</th>
           <th style="width:86px">Horaire</th>
           <th>Pizzas</th>
-          <th>Commentaire</th> <!-- ✅ Ajout -->
           <th style="width:90px">Total</th>
           <th style="width:80px">Action</th>
         </tr>
@@ -96,22 +95,134 @@
 </div>
 
 <script>
-/* (… tout le code identique, seul le render change) */
+/* ====== Anti page blanche ====== */
+function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
+addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
+/* ====== Elements & state ====== */
+const elApi = document.getElementById('api');
+const elRows = document.getElementById('rows');
+const elStatus = document.getElementById('status');
+const elVol = document.getElementById('vol');
+const btnEnable = document.getElementById('audio-enable');
+const btnTest = document.getElementById('audio-test');
+
+let AUDIO_CTX = null, AUDIO_GAIN = null, AUDIO_UNLOCKED = false;
+
+/* persistences */
+const LS_API = 'pizz_api';
+const LS_VOL = 'pizz_vol';
+const LS_AUDIO = 'pizz_audio';
+const LS_HIDDEN = 'pizz_hidden';
+const LS_HDC = 'pizz_hdc';  // { id : ms }
+
+let HIDDEN = new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
+let HDC_MAP = new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
+let KNOWN = new Map();   // id -> last object
+
+/* ====== Helpers ====== */
+const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
+const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="ok">'+(t||'OK')+'</span>';
+const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="err">'+(t||'Erreur')+'</span>';
+
+function parseBasket(o){
+  let b = o.basket ?? o.items ?? [];
+  if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
+  return Array.isArray(b) ? b : [];
+}
+function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
+function slotShort(v){
+  if(!v) return '';
+  if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
+  const d=new Date(v); return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function inferMsFromId(id){
+  if(!id) return NaN;
+  const m = String(id).match(/(\d{12,})$/); // prend la fin numérique (style 1759061880580)
+  if(m){ const n = Number(m[1]); if(!Number.isNaN(n)) return n; }
+  return NaN;
+}
+function createdMs(o){
+  const raw = o.created ?? o.date ?? o.when ?? o.ts ?? o.time ?? o.timestamp;
+  let t = Number.isFinite(Date.parse(raw||'')) ? Date.parse(raw) : NaN;
+  if(Number.isNaN(t)) t = inferMsFromId(o.id||o.ID||o.code);
+  if(Number.isNaN(t)){
+    if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
+    t = Date.now(); // dernier recours
+  }
+  if(!HDC_MAP.has(o.id)) { HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
+  return t;
+}
+
+/* ====== WebAudio bell (aucun fichier externe) ====== */
+function ensureAudio(){
+  if (AUDIO_CTX) return;
+  AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
+  AUDIO_GAIN = AUDIO_CTX.createGain();
+  AUDIO_GAIN.gain.value = Number(localStorage.getItem(LS_VOL)||'0.9');
+  AUDIO_GAIN.connect(AUDIO_CTX.destination);
+}
+function ring(){
+  if(!AUDIO_UNLOCKED) return;
+  ensureAudio();
+  const t = AUDIO_CTX.currentTime;
+  const env = AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t);
+  env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t+0.7);
+  env.connect(AUDIO_GAIN);
+
+  const o1 = AUDIO_CTX.createOscillator(); o1.type='triangle';
+  o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25);
+  const o2 = AUDIO_CTX.createOscillator(); o2.type='sine';
+  o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25);
+
+  o1.connect(env); o2.connect(env);
+  o1.start(t); o2.start(t);
+  o1.stop(t+0.7); o2.stop(t+0.7);
+}
+
+/* ====== Audio UI ====== */
+function unlockAudio(){
+  try{
+    ensureAudio(); AUDIO_CTX.resume();
+    AUDIO_UNLOCKED = true; btnEnable.style.display='none';
+    localStorage.setItem(LS_AUDIO,'1');
+  }catch(_){}
+}
+btnEnable.addEventListener('click', unlockAudio);
+btnTest.addEventListener('click', ()=>{ unlockAudio(); ring(); });
+elVol.addEventListener('input', ()=>{
+  const v = Number(elVol.value||'0.9');
+  if(AUDIO_GAIN) AUDIO_GAIN.gain.value = v;
+  localStorage.setItem(LS_VOL, String(v));
+});
+(function initVol(){
+  const v = Number(localStorage.getItem(LS_VOL)||'0.9');
+  elVol.value = String(v);
+})();
+if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
+
+/* ====== Render ====== */
 function render(list){
+  // filtre les IDs masqués de façon persistante
   list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
+
+  // tri (plus récentes en haut)
   list.sort((a,b)=> createdMs(b)-createdMs(a));
+
   const prevIds = new Set(KNOWN.keys());
   elRows.innerHTML = '';
 
   list.forEach((o,idx)=>{
     const id = o.id || o.ID || o.code; if(!id) return;
     KNOWN.set(id,o);
-    const ms = createdMs(o);
 
+    const ms = createdMs(o);
     const tr = document.createElement('tr');
     const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
 
+    // # = index humain (1,2,3…) + code complet en infobulle
     tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
     tr.appendChild(td('Client', o.name||o.client||'' ));
     tr.appendChild(td('Téléphone', o.phone||'' ));
@@ -124,8 +235,6 @@ function render(list){
       return `${it.name||''} × ${it.qty||1}${sup}`;
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
-
-    tr.appendChild(td('Commentaire', o.note || o.comment || o.commentaire || '—')); // ✅ affichage du commentaire
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
@@ -143,9 +252,43 @@ function render(list){
     elRows.appendChild(tr);
   });
 
+  // son si au moins une nouvelle ID
   const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
   if(newOnes.length>0) ring();
 }
+
+/* ====== API ====== */
+async function fetchOrders(){
+  const url = (elApi.value||'').trim();
+  if(!url){ err('Renseigne l’URL de l’API'); return []; }
+  const r = await fetch(url+'?list=1', {cache:'no-store'});
+  const data = await r.json();
+  if(data && data.ok===false) throw new Error(data.error||'Réponse invalide');
+  const arr = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
+  return arr;
+}
+async function refresh(){
+  try{
+    const list = await fetchOrders();
+    render(list);
+    ok('OK');
+  }catch(e){ console.error(e); err('Erreur réseau'); }
+}
+
+/* ====== Hooks & init ====== */
+document.getElementById('save').onclick = ()=>{
+  localStorage.setItem(LS_API, elApi.value.trim());
+  localStorage.setItem(LS_VOL, String(elVol.value||'0.9'));
+  ok('Paramètres enregistrés');
+};
+document.getElementById('refresh').onclick = refresh;
+
+(function boot(){
+  elApi.value = localStorage.getItem(LS_API) || elApi.value;
+  const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v);
+  refresh();
+  setInterval(refresh, 10000);
+})();
 </script>
 </body>
 </html>
