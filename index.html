@@ -3,21 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard — PIZZ’AMIGO</title>
+<title>Dashboard — PIZZ'AMIGO</title>
 <style>
   :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:18px auto;padding:0 14px;position:relative}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
   h1{margin:6px 0 12px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;position:relative}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   input[type=text]{flex:1 1 260px;min-width:220px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:#1a2333;color:#fff;border-radius:999px;padding:9px 14px;cursor:pointer;pointer-events:auto}
+  .btn{border:1px solid rgba(255,255,255,.25);background:#1a2333;color:#fff;border-radius:999px;padding:9px 14px;cursor:pointer}
   .btn.primary{background:var(--green);color:#001b10;border:none}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
-  input[type=range]{width:120px;pointer-events:auto}
+  input[type=range]{width:120px}
   table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px;vertical-align:middle;text-align:left}
   .tag{padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:#233048}
@@ -31,25 +31,20 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Dashboard — PIZZ’AMIGO</h1>
+  <h1>Dashboard — PIZZ'AMIGO</h1>
 
   <div class="card">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API Google Apps Script">
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)">
+      <input id="api" type="text" placeholder="URL de l'API Google Apps Script">
+      <input id="adm" type="text" placeholder="Cle admin (facultatif)">
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn" id="save"
-        onclick="onSave()" ontouchstart="onSave()">Enregistrer</button>
-      <button class="btn" id="refresh"
-        onclick="refreshNow()" ontouchstart="refreshNow()">Actualiser</button>
-      <button class="btn" id="demo"
-        onclick="sendDemo()" ontouchstart="sendDemo()">Démo</button>
+      <button class="btn" id="save">Enregistrer</button>
+      <button class="btn" id="refresh">Actualiser</button>
+      <button class="btn" id="demo">Demo</button>
       <span id="status" class="muted">–</span>
-
       <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <button class="btn" id="soundBtn"
-          onclick="enableSound()" ontouchstart="enableSound()">🔔 Activer le son</button>
+        <button class="btn" id="soundBtn">Activer le son</button>
         <label class="muted" for="vol">Son :</label>
         <input type="range" min="0" max="1" step="0.05" id="vol" value="0.7">
       </span>
@@ -63,7 +58,7 @@
           <th>Heure</th>
           <th class="hide-sm">ID</th>
           <th class="hide-sm">Client</th>
-          <th class="hide-sm">Téléphone</th>
+          <th class="hide-sm">Telephone</th>
           <th>Horaire</th>
           <th>Pizzas</th>
           <th>Total</th>
@@ -79,13 +74,13 @@
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
-/* ========= Sécurité anti page blanche ========= */
-function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', e=>showErr(e.message+'\\n'+(e.error&&e.error.stack||'')));
-window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
+/* ===== anti page blanche ===== */
+function showErr(msg){var b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
+window.addEventListener('error', function(e){showErr(e.message + "\n" + (e.error&&e.error.stack||""));});
+window.addEventListener('unhandledrejection', function(e){showErr('Promise rejetee: ' + (e.reason&&e.reason.message||e.reason));});
 
-/* ========= État ========= */
-const S = {
+/* ===== etat ===== */
+var S = {
   api: localStorage.getItem('pizz_api') || '',
   adm: localStorage.getItem('pizz_adm') || 'PIZZAMIGO-ADMIN-123',
   orders: new Map(),
@@ -94,38 +89,41 @@ const S = {
 document.getElementById('api').value = S.api;
 document.getElementById('adm').value = S.adm;
 
-/* ========= Helpers ========= */
-const € = v => Number(v||0).toFixed(2).replace('.', ',')+' €';
-const hhmm = t => /^\d{2}:\d{2}$/.test(t||'') ? t : (()=>{const d=new Date(t||Date.now());return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')})();
-
+/* ===== helpers ===== */
+function euro(v){return Number(v||0).toFixed(2).replace('.', ',') + ' €';}
+function hhmm(t){
+  if(/^\d{2}:\d{2}$/.test(t||'')) return t;
+  var d = new Date(t||Date.now());
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
 function itemsText(o){
-  const arr=(o.items||o.basket||[]);
-  return arr.map(it=>{
-    const sup = it.supplType ? ` (+1€ ${it.supplType})` : '';
-    return `${it.name} × ${it.qty||1}${sup}`;
+  var arr = (o.items||o.basket||[]);
+  return arr.map(function(it){
+    var sup = it.supplType ? ' (+1€ ' + it.supplType + ')' : '';
+    return (it.name||'') + ' × ' + (it.qty||1) + sup;
   }).join('<br>');
 }
 function rowHtml(o){
-  return `<tr data-id="${o.id}">
-    <td>${o.time||o.when||''}</td>
-    <td class="hide-sm">${o.id||''}</td>
-    <td class="hide-sm">${o.name||o.client||''}</td>
-    <td class="hide-sm">${o.phone||''}</td>
-    <td>${hhmm(o.slot||o.horaire||o.when||'')}</td>
-    <td>${itemsText(o)||'-'}</td>
-    <td class="price">${€(o.total||o.total11||0)}</td>
-    <td><span class="tag">${o.status||'new'}</span></td>
-    <td class="actions">
-      <button class="btn" onclick="setStatus('${o.id}','ready')">Prête</button>
-      <button class="btn" onclick="setStatus('${o.id}','done')">Terminée</button>
-      <button class="btn red" onclick="setStatus('${o.id}','cancel')">Annuler</button>
-      <button class="btn" onclick="removeRow('${o.id}')">×</button>
-    </td>
-  </tr>`;
+  return '<tr data-id="'+(o.id||'')+'">'+
+    '<td>'+(o.time||o.when||'')+'</td>'+
+    '<td class="hide-sm">'+(o.id||'')+'</td>'+
+    '<td class="hide-sm">'+(o.name||o.client||'')+'</td>'+
+    '<td class="hide-sm">'+(o.phone||'')+'</td>'+
+    '<td>'+hhmm(o.slot||o.horaire||o.when||'')+'</td>'+
+    '<td>'+(itemsText(o)||'-')+'</td>'+
+    '<td class="price">'+euro(o.total||o.total11||0)+'</td>'+
+    '<td><span class="tag">'+(o.status||'new')+'</span></td>'+
+    '<td class="actions">'+
+      '<button class="btn" onclick="setStatus(\''+(o.id||'')+'\',\'ready\')">Prete</button> '+
+      '<button class="btn" onclick="setStatus(\''+(o.id||'')+'\',\'done\')">Terminee</button> '+
+      '<button class="btn red" onclick="setStatus(\''+(o.id||'')+'\',\'cancel\')">Annuler</button> '+
+      '<button class="btn" onclick="removeRow(\''+(o.id||'')+'\')">×</button>'+
+    '</td>'+
+  '</tr>';
 }
 function upsert(list){
-  const body=document.getElementById('rows'); let added=0;
-  (list||[]).forEach(o=>{
+  var body=document.getElementById('rows'); var added=0;
+  (list||[]).forEach(function(o){
     if(!S.orders.has(o.id)){
       S.orders.set(o.id,o);
       body.insertAdjacentHTML('afterbegin',rowHtml(o));
@@ -136,7 +134,7 @@ function upsert(list){
 }
 function ring(){
   if(!S.audioReady||!S.ctx) return;
-  const g=S.ctx.createGain(), o=S.ctx.createOscillator();
+  var g=S.ctx.createGain(), o=S.ctx.createOscillator();
   o.type='triangle'; o.frequency.value=880;
   g.gain.value=0.0001;
   g.gain.exponentialRampToValueAtTime(Math.max(0.02,+document.getElementById('vol').value), S.ctx.currentTime+0.02);
@@ -144,35 +142,42 @@ function ring(){
   o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+0.35);
 }
 
-/* ========= API ========= */
-function apiUrl(){const v=(document.getElementById('api').value||S.api||'').trim(); if(!v) throw new Error('URL API manquante'); return v;}
+/* ===== API ===== */
+function apiUrl(){
+  var v=(document.getElementById('api').value||S.api||'').trim();
+  if(!v) throw new Error('URL API manquante');
+  return v;
+}
 async function apiGet(params){
-  const u = new URL(apiUrl()); Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r = await fetch(u,{method:'GET',cache:'no-store'}); const t=await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
+  var u = new URL(apiUrl());
+  Object.keys(params||{}).forEach(function(k){u.searchParams.set(k, params[k]);});
+  var r = await fetch(u,{method:'GET',cache:'no-store'});
+  var t = await r.text(); try{return JSON.parse(t);}catch(e){throw new Error(t);}
 }
 async function apiPost(obj){
-  const r = await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)});
-  const t=await r.text(); try{return JSON.parse(t);}catch{throw new Error(t);}
+  var r = await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)});
+  var t = await r.text(); try{return JSON.parse(t);}catch(e){throw new Error(t);}
 }
 
-/* ========= Actions (liées inline) ========= */
-function onSave(){
+/* ===== actions (exposees sur window) ===== */
+window.onSave = function(){
   S.api=(document.getElementById('api').value||'').trim();
   S.adm=(document.getElementById('adm').value||'').trim()||'PIZZAMIGO-ADMIN-123';
-  localStorage.setItem('pizz_api',S.api); localStorage.setItem('pizz_adm',S.adm);
-  document.getElementById('status').textContent='Paramètres enregistrés';
-}
-async function refreshNow(){
+  localStorage.setItem('pizz_api',S.api);
+  localStorage.setItem('pizz_adm',S.adm);
+  document.getElementById('status').textContent='Parametres enregistres';
+};
+window.refreshNow = async function(){
   try{
-    const d = await apiGet({list:'today'});
-    if(!d.ok) throw new Error(d.error||'Réponse invalide');
+    var d = await apiGet({list:'today'});
+    if(!d.ok) throw new Error(d.error||'Reponse invalide');
     upsert(d.orders||[]);
     document.getElementById('status').textContent=new Date().toTimeString().slice(0,8)+' — OK';
-  }catch(e){ document.getElementById('status').textContent='Erreur réseau'; showErr(String(e)); }
-}
-async function sendDemo(){
+  }catch(e){ document.getElementById('status').textContent='Erreur reseau'; showErr(String(e)); }
+};
+window.sendDemo = async function(){
   try{
-    const res = await apiPost({
+    var res = await apiPost({
       adminKey:(document.getElementById('adm').value||S.adm||'').trim(),
       demo:true,
       name:'Test JSONP',
@@ -182,28 +187,43 @@ async function sendDemo(){
       total:8.50,
       source:'site'
     });
-    if(!res.ok) throw new Error(res.error||'Échec envoi démo');
-    await refreshNow();
-  }catch(e){ alert('Échec d’envoi de la démo.'); showErr(String(e)); }
-}
-function removeRow(id){ S.orders.delete(id); const tr=document.querySelector(`tr[data-id="${CSS.escape(id)}"]`); if(tr) tr.remove(); }
-function setStatus(id,st){
-  apiPost({adminKey:(document.getElementById('adm').value||S.adm||'').trim(), setStatus:true, id, status:st})
-    .then(r=>{ if(!r.ok) throw new Error(r.error||'setStatus'); const tr=document.querySelector(`tr[data-id="${CSS.escape(id)}"]`); if(tr) tr.querySelector('.tag').textContent=st; })
-    .catch(err=>showErr(String(err)));
-}
-function enableSound(){
+    if(!res.ok) throw new Error(res.error||'Echec envoi demo');
+    await window.refreshNow();
+  }catch(e){ alert('Echec denvoi de la demo.'); showErr(String(e)); }
+};
+window.removeRow = function(id){
+  S.orders.delete(id);
+  var tr=document.querySelector('tr[data-id="'+CSS.escape(id)+'"]'); if(tr) tr.remove();
+};
+window.setStatus = function(id,st){
+  apiPost({adminKey:(document.getElementById('adm').value||S.adm||'').trim(), setStatus:true, id:id, status:st})
+    .then(function(r){
+      if(!r.ok) throw new Error(r.error||'setStatus');
+      var tr=document.querySelector('tr[data-id="'+CSS.escape(id)+'"]');
+      if(tr){ var tag=tr.querySelector('.tag'); if(tag) tag.textContent=st; }
+    })
+    .catch(function(err){ showErr(String(err)); });
+};
+window.enableSound = function(){
   try{
     if(!S.ctx){ S.ctx=new (window.AudioContext||window.webkitAudioContext)(); }
-    S.ctx.resume().then(()=>{ S.audioReady=true; document.getElementById('soundBtn').disabled=true; document.getElementById('soundBtn').textContent='🔔 Son activé'; });
+    S.ctx.resume().then(function(){ S.audioReady=true; var b=document.getElementById('soundBtn'); b.disabled=true; b.textContent='Son active'; });
   }catch(e){ showErr(String(e)); }
-}
+};
 
-/* ========= Démarrage ========= */
-(function boot(){
-  // pré-remplir ton URL si vide (tu peux l’écraser)
-  if(!S.api) document.getElementById('api').value='https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec';
-  refreshNow(); S.timer=setInterval(refreshNow,5000);
+/* ===== lier les boutons ===== */
+document.getElementById('save').addEventListener('click', window.onSave);
+document.getElementById('refresh').addEventListener('click', window.refreshNow);
+document.getElementById('demo').addEventListener('click', window.sendDemo);
+document.getElementById('soundBtn').addEventListener('click', window.enableSound);
+
+/* ===== boot ===== */
+(function(){
+  if(!S.api){
+    document.getElementById('api').value='https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec';
+  }
+  window.refreshNow();
+  S.timer=setInterval(window.refreshNow, 5000);
 })();
 </script>
 </body>
