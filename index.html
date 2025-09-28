@@ -110,7 +110,7 @@ const elEnable = document.getElementById('enableSound');
 const elVol = document.getElementById('volume');
 
 let COUNTER = 0;                   // compteur d’affichage (#)
-let KNOWN = new Set();             // ids déjà joués (pour le son)
+let KNOWN = new Set();             // ids déjà connus (pour déclencher le son uniquement sur nouvelles)
 let soundReady = false;
 
 /* Helpers */
@@ -141,7 +141,7 @@ function parseBasket(o){
   return Array.isArray(b) ? b : [];
 }
 
-/* Son */
+/* ===== Son : activation persistante + volume ===== */
 function setVolumeFromLS(){
   const v = Number(localStorage.getItem('pizzamigo_vol') ?? 70);
   elVol.value = isNaN(v) ? 70 : v;
@@ -151,18 +151,25 @@ elVol.addEventListener('input', ()=>{
   elBell.volume = Math.max(0, Math.min(1, (elVol.value|0)/100));
   localStorage.setItem('pizzamigo_vol', elVol.value);
 });
-elEnable.addEventListener('click', async ()=>{
+
+async function enableSound(){
   try{
-    await elBell.play();         // interaction utilisateur -> autorisé
+    // Un petit play/pause pour "débloquer" l'audio dans le navigateur
+    await elBell.play();
     elBell.pause(); elBell.currentTime = 0;
     soundReady = true;
+    localStorage.setItem('pizzamigo_sound','1');
     elEnable.style.display='none';
-  }catch(e){ /* ignore */ }
-});
+  }catch(e){ console.warn("Audio bloqué par le navigateur (besoin d'un clic)", e); }
+}
+elEnable.addEventListener('click', enableSound);
+
 function pingBell(){
-  if(!soundReady) return;        // besoin d’un clic préalable
-  elBell.currentTime = 0;
-  elBell.play().catch(()=>{});
+  if(!soundReady) return;        // besoin d’une activation utilisateur au moins une fois
+  try{
+    elBell.currentTime = 0;
+    elBell.play().catch(()=>{});
+  }catch(e){}
 }
 
 /* Rendu */
@@ -170,7 +177,7 @@ function renderTable(list){
   // tri : plus récentes en haut
   list.sort((a,b)=>getStamp(b)-getStamp(a));
 
-  // détecte les nouvelles AVANT de toucher KNOWN
+  // détecte les nouvelles AVANT de mettre à jour KNOWN
   const newOnes = list.filter(o => !KNOWN.has(String(o.id||'')));
 
   // (ré)affiche
@@ -200,14 +207,14 @@ function renderTable(list){
 
     const act = document.createElement('td'); act.className='actions';
     const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer';
-    x.onclick=()=>{ tr.remove(); /* local uniquement */ };
+    x.onclick=()=>{ tr.remove(); /* local seulement */ };
     act.appendChild(x);
     tr.appendChild(act);
 
     elRows.appendChild(tr);
   });
 
-  // Met à jour le set connu & joue la cloche si nécessaire
+  // met à jour les IDs connus & joue la cloche si nouvelles commandes
   if(newOnes.length>0) pingBell();
   KNOWN = new Set(list.map(o=>String(o.id||'')));
 }
@@ -237,8 +244,13 @@ document.getElementById('refresh').onclick = getList;
 (function boot(){
   elApi.value = localStorage.getItem('pizzamigo_api') || elApi.value;
   setVolumeFromLS();
-  // si le son avait été activé on masque le bouton mais on rejouera seulement après un clic
-  if(localStorage.getItem('pizzamigo_vol')!==null){ /* slider déjà positionné */ }
+
+  // Si l'utilisateur a déjà activé le son auparavant, on le prépare automatiquement
+  if(localStorage.getItem('pizzamigo_sound') === '1'){
+    soundReady = true;
+    elEnable.style.display='none';
+  }
+
   getList();
   setInterval(getList, 10000);
 })();
