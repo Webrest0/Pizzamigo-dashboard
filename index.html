@@ -23,32 +23,25 @@
   .ok{color:var(--green)}
   .err{color:#ff9a9a}
 
-  /* tableau aéré */
-  table{width:100%;border-collapse:separate;border-spacing:0 12px}
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
-  tbody tr{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
-  tbody td{
-    background:#0f1623;border:1px solid var(--line);
-    padding:12px 14px;vertical-align:top;line-height:1.35;
-  }
-  tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
-  tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-  .actions .btn{padding:6px 10px}
+  tbody td{background:#0f1623;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}
+  tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
+  tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623}
 
-  /* Responsive : cartes */
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
-    tbody tr{margin:14px 0}
-    tbody td{border-radius:12px;margin:6px 0;padding:10px 12px}
-    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
-    .actions{justify-content:flex-start}
+    tbody tr{margin:12px 0}
+    tbody td{border:1px solid var(--line);border-radius:12px;margin:6px 0;padding:10px 12px}
+    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:2px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
   }
 
-  .sound{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623}
-  .vol{width:160px}
+  .vol{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .small{padding:6px 10px}
 </style>
 </head>
 <body>
@@ -58,13 +51,13 @@
   <div class="panel">
     <div class="row">
       <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
+      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
-      <div class="sound">
-        <button id="audio-enable" class="pill">🔔 Activer le son</button>
-        <button id="audio-test" class="btn">Test son</button>
+      <div class="vol">
+        <button id="test" class="btn small">Test son</button>
         <label class="muted">Volume :</label>
-        <input id="vol" class="vol" type="range" min="0" max="1" step="0.01">
+        <input id="vol" type="range" min="0" max="1" step="0.01" value="0.85">
       </div>
     </div>
     <div id="status" class="muted" style="margin-top:8px">—</div>
@@ -74,12 +67,13 @@
     <table>
       <thead>
         <tr>
-          <th style="width:64px">#</th>
+          <th style="width:70px">ID</th>
           <th>Client</th>
           <th>Téléphone</th>
-          <th style="width:78px">HDC</th>
-          <th style="width:86px">Horaire</th>
+          <th style="width:80px">HDC</th>
+          <th style="width:90px">Horaire</th>
           <th>Pizzas</th>
+          <th>Commentaire</th>
           <th style="width:90px">Total</th>
           <th style="width:80px">Action</th>
         </tr>
@@ -95,199 +89,167 @@
 </div>
 
 <script>
-/* ====== Anti page blanche ====== */
+/* ==== anti page blanche ==== */
 function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
-addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
-addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
+window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ====== Elements & state ====== */
-const elApi = document.getElementById('api');
-const elRows = document.getElementById('rows');
-const elStatus = document.getElementById('status');
-const elVol = document.getElementById('vol');
-const btnEnable = document.getElementById('audio-enable');
-const btnTest = document.getElementById('audio-test');
+/* ==== state ==== */
+const elApi=document.getElementById('api');
+const elAdm=document.getElementById('adm');
+const elRows=document.getElementById('rows');
+const elStatus=document.getElementById('status');
+const elVol=document.getElementById('vol');
+const btnTest=document.getElementById('test');
 
-let AUDIO_CTX = null, AUDIO_GAIN = null, AUDIO_UNLOCKED = false;
+let ORDERS=new Map();        // idMachine -> order (dernière version connue)
+let HDC=new Map();            // idMachine -> HDC figée
+let audioCtx=null, gainNode=null;
 
-/* persistences */
-const LS_API = 'pizz_api';
-const LS_VOL = 'pizz_vol';
-const LS_AUDIO = 'pizz_audio';
-const LS_HIDDEN = 'pizz_hidden';
-const LS_HDC = 'pizz_hdc';  // { id : ms }
-
-let HIDDEN = new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
-let HDC_MAP = new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
-let KNOWN = new Map();   // id -> last object
-
-/* ====== Helpers ====== */
-const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
-const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="ok">'+(t||'OK')+'</span>';
-const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="err">'+(t||'Erreur')+'</span>';
-
-function parseBasket(o){
-  let b = o.basket ?? o.items ?? [];
-  if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
-  return Array.isArray(b) ? b : [];
-}
-function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
-function slotShort(v){
-  if(!v) return '';
-  if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
-  const d=new Date(v); return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
-}
-function inferMsFromId(id){
-  if(!id) return NaN;
-  const m = String(id).match(/(\d{12,})$/); // prend la fin numérique (style 1759061880580)
-  if(m){ const n = Number(m[1]); if(!Number.isNaN(n)) return n; }
-  return NaN;
-}
-function createdMs(o){
-  const raw = o.created ?? o.date ?? o.when ?? o.ts ?? o.time ?? o.timestamp;
-  let t = Number.isFinite(Date.parse(raw||'')) ? Date.parse(raw) : NaN;
-  if(Number.isNaN(t)) t = inferMsFromId(o.id||o.ID||o.code);
-  if(Number.isNaN(t)){
-    if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
-    t = Date.now(); // dernier recours
-  }
-  if(!HDC_MAP.has(o.id)) { HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
-  return t;
-}
-
-/* ====== WebAudio bell (aucun fichier externe) ====== */
+/* ==== audio (cloche douce) ==== */
 function ensureAudio(){
-  if (AUDIO_CTX) return;
-  AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
-  AUDIO_GAIN = AUDIO_CTX.createGain();
-  AUDIO_GAIN.gain.value = Number(localStorage.getItem(LS_VOL)||'0.9');
-  AUDIO_GAIN.connect(AUDIO_CTX.destination);
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  gainNode = audioCtx.createGain();
+  gainNode.gain.value = Number(elVol.value||0.85);
+  gainNode.connect(audioCtx.destination);
 }
 function ring(){
-  if(!AUDIO_UNLOCKED) return;
   ensureAudio();
-  const t = AUDIO_CTX.currentTime;
-  const env = AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t);
-  env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01);
-  env.gain.exponentialRampToValueAtTime(0.0001, t+0.7);
-  env.connect(AUDIO_GAIN);
+  const t=audioCtx.currentTime;
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.type='triangle';
+  o.frequency.setValueAtTime(1400,t);
+  o.frequency.exponentialRampToValueAtTime(700,t+0.20);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.7,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.45);
+  o.connect(g).connect(gainNode);
+  o.start(t); o.stop(t+0.46);
+}
+btnTest.onclick=async()=>{ try{ ensureAudio(); await audioCtx.resume(); ring(); }catch(e){ showErr(String(e)); } };
+elVol.oninput=()=>{ ensureAudio(); gainNode.gain.value=Number(elVol.value||0.85); };
 
-  const o1 = AUDIO_CTX.createOscillator(); o1.type='triangle';
-  o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25);
-  const o2 = AUDIO_CTX.createOscillator(); o2.type='sine';
-  o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25);
-
-  o1.connect(env); o2.connect(env);
-  o1.start(t); o2.start(t);
-  o1.stop(t+0.7); o2.stop(t+0.7);
+/* ==== helpers ==== */
+const euro=v=>(Number(v)||0).toFixed(2).replace('.',',')+' €';
+const ok=m=>elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="ok">'+(m||'OK')+'</span>';
+const err=m=>elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="err">'+(m||'Erreur')+'</span>';
+const api = ()=> (elApi.value||'').trim();
+function shortSlot(v){
+  if(!v) return '';
+  if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
+  const d=new Date(v); const h=String(d.getHours()).padStart(2,'0'); const m=String(d.getMinutes()).padStart(2,'0');
+  return `${h}h${m}`;
+}
+function parseBasket(o){
+  let b = o.basket ?? o.items ?? [];
+  if (typeof b==='string'){ try{ b=JSON.parse(b); }catch{ b=[]; } }
+  return Array.isArray(b)?b:[];
 }
 
-/* ====== Audio UI ====== */
-function unlockAudio(){
-  try{
-    ensureAudio(); AUDIO_CTX.resume();
-    AUDIO_UNLOCKED = true; btnEnable.style.display='none';
-    localStorage.setItem(LS_AUDIO,'1');
-  }catch(_){}
-}
-btnEnable.addEventListener('click', unlockAudio);
-btnTest.addEventListener('click', ()=>{ unlockAudio(); ring(); });
-elVol.addEventListener('input', ()=>{
-  const v = Number(elVol.value||'0.9');
-  if(AUDIO_GAIN) AUDIO_GAIN.gain.value = v;
-  localStorage.setItem(LS_VOL, String(v));
-});
-(function initVol(){
-  const v = Number(localStorage.getItem(LS_VOL)||'0.9');
-  elVol.value = String(v);
-})();
-if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
+/* ==== rendu ==== */
+function renderTable(list){
+  // on crée un id "machine" stable (l’API met souvent id genre PZ-…)
+  const normalizeId = o => String(o.id||o.ID||o.Id||o.code||'').trim() || crypto.randomUUID();
 
-/* ====== Render ====== */
-function render(list){
-  // filtre les IDs masqués de façon persistante
-  list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
+  // tri: plus récent en haut (si l’API donne un "date" ou "ts", sinon par ordre reçu)
+  list.sort((a,b)=>{
+    const ta = +new Date(a.date||a.ts||a.when||0);
+    const tb = +new Date(b.date||b.ts||b.when||0);
+    return (tb||0)-(ta||0);
+  });
 
-  // tri (plus récentes en haut)
-  list.sort((a,b)=> createdMs(b)-createdMs(a));
+  elRows.innerHTML='';
+  const seen = new Set();
+  let n=list.length;
+  list.forEach(o=>{
+    const mid = normalizeId(o);
+    seen.add(mid);
 
-  const prevIds = new Set(KNOWN.keys());
-  elRows.innerHTML = '';
+    // fige HDC la 1ère fois (o.hdc / o.created / date / now)
+    if(!HDC.has(mid)){
+      const d = o.hdc || o.created || o.date || Date.now();
+      const dt = new Date(d);
+      HDC.set(mid, `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`);
+    }
+    ORDERS.set(mid,o);
 
-  list.forEach((o,idx)=>{
-    const id = o.id || o.ID || o.code; if(!id) return;
-    KNOWN.set(id,o);
+    const tr=document.createElement('tr');
+    const TD=(label,html)=>{const c=document.createElement('td');c.setAttribute('data-label',label);c.innerHTML=html;return c;};
 
-    const ms = createdMs(o);
-    const tr = document.createElement('tr');
-    const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
+    // ID humain décroissant
+    tr.appendChild(TD('ID', String(n--)));
 
-    // # = index humain (1,2,3…) + code complet en infobulle
-    tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
-    tr.appendChild(td('Client', o.name||o.client||'' ));
-    tr.appendChild(td('Téléphone', o.phone||'' ));
-    tr.appendChild(td('HDC', hhmm(new Date(ms)) ));
-    tr.appendChild(td('Horaire', slotShort(o.slot||o.horaire||'')));
+    tr.appendChild(TD('Client', o.name||o.client||'' ));
+    tr.appendChild(TD('Téléphone', o.phone||'' ));
+    tr.appendChild(TD('HDC', (HDC.get(mid)||'').replace(':','h') ));
+    tr.appendChild(TD('Horaire', shortSlot(o.slot||o.horaire||'') ));
 
-    const pizzas = parseBasket(o).map(it=>{
-      const supVal = (it.supplPrice ?? it.suppl ?? 0);
-      const sup = supVal ? ` (+${supVal}€ ${it.supplType||'suppl.'})` : '';
-      return `${it.name||''} × ${it.qty||1}${sup}`;
-    }).join('<br>');
-    tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
+    const pizzas = (()=> {
+      const b = parseBasket(o);
+      if(b.length) return b.map(it=>{
+        const sup = (it.supplPrice||it.suppl)?` (+${(it.supplPrice||it.suppl)}€ ${it.supplType||'suppl.'})`:'';
+        return `${it.name} × ${it.qty||1}${sup}`;
+      }).join('<br>');
+      return o.pizzas||'';
+    })();
+    tr.appendChild(TD('Pizzas', pizzas ));
 
-    tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
+    const comment = o.comment || o.note || o.msg || o.commentaire || '';
+    tr.appendChild(TD('Commentaire', comment));
 
-    const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
-    x.onclick = ()=>{
-      const realId = id;
-      HIDDEN.add(realId);
-      localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN)));
-      tr.remove();
-    };
+    tr.appendChild(TD('Total', euro(o.total||0)));
+
+    const act=document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
+    const x=document.createElement('button'); x.className='btn red small'; x.textContent='✖';
+    x.title='Retirer de la vue';
+    x.onclick=()=>{ tr.remove(); ORDERS.delete(mid); HDC.delete(mid); };
     act.appendChild(x);
     tr.appendChild(act);
 
     elRows.appendChild(tr);
   });
 
-  // son si au moins une nouvelle ID
-  const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
-  if(newOnes.length>0) ring();
+  // Détecte nouvelles commandes (id qu’on n’avait pas avant) → son
+  const newOnes = list.filter(o=>{
+    const mid = String(o.id||o.ID||o.Id||o.code||'').trim();
+    return mid && !ORDERS.has(mid);
+  });
+  if(newOnes.length>0){ try{ ring(); }catch{} }
+
+  ok('OK');
 }
 
-/* ====== API ====== */
+/* ==== API ==== */
 async function fetchOrders(){
-  const url = (elApi.value||'').trim();
-  if(!url){ err('Renseigne l’URL de l’API'); return []; }
-  const r = await fetch(url+'?list=1', {cache:'no-store'});
+  const url = api();
+  const r = await fetch(url+'?list=1',{cache:'no-store'});
   const data = await r.json();
-  if(data && data.ok===false) throw new Error(data.error||'Réponse invalide');
-  const arr = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
-  return arr;
+  if(data && data.ok===false) throw new Error(data.error||'réponse invalide');
+  return Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
 }
 async function refresh(){
   try{
     const list = await fetchOrders();
-    render(list);
-    ok('OK');
+    renderTable(list);
   }catch(e){ console.error(e); err('Erreur réseau'); }
 }
 
-/* ====== Hooks & init ====== */
-document.getElementById('save').onclick = ()=>{
-  localStorage.setItem(LS_API, elApi.value.trim());
-  localStorage.setItem(LS_VOL, String(elVol.value||'0.9'));
+/* ==== hooks ==== */
+document.getElementById('save').onclick=()=>{
+  localStorage.setItem('pizzamigo_api', elApi.value.trim());
+  localStorage.setItem('pizzamigo_adm', elAdm.value.trim());
   ok('Paramètres enregistrés');
 };
-document.getElementById('refresh').onclick = refresh;
+document.getElementById('refresh').onclick=refresh;
 
+/* ==== init ==== */
 (function boot(){
-  elApi.value = localStorage.getItem(LS_API) || elApi.value;
-  const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v);
+  elApi.value = localStorage.getItem('pizzamigo_api') || elApi.value;
+  elAdm.value = localStorage.getItem('pizzamigo_adm') || '';
   refresh();
-  setInterval(refresh, 10000);
+  setInterval(refresh, 10_000);
 })();
 </script>
 </body>
