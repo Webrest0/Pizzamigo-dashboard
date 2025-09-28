@@ -6,42 +6,51 @@
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
   :root{
-    --bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6; --red:#e55252;
+    --bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6;
+    --green:#1fcf7c; --red:#e55252; --white:#fff; --accent:#ffb54c;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1024px;margin:18px auto;padding:0 14px}
+  .wrap{max-width:1040px;margin:18px auto;padding:0 14px}
 
   h1{margin:0 0 12px;font-size:24px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  input[type="text"]{width:100%;max-width:680px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
+  input[type="text"]{flex:1 1 520px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px;min-width:260px}
   .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
-  .ok{color:#1fcf7c}
+  .ok{color:var(--green)}
   .err{color:#ff9a9a}
 
-  table{width:100%;border-collapse:separate;border-spacing:0 10px}
-  thead th{padding:10px;text-align:left;color:#dfe8ff}
-  tbody td{background:#0f1623;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}
-  tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
-  tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
-  .actions .btn{padding:6px 10px}
+  .vol-wrap{display:flex;align-items:center;gap:10px;margin-left:auto}
+  input[type="range"]{width:180px}
 
-  /* Mobile */
-  @media (max-width: 720px){
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  thead th{padding:6px 10px;color:#dfe8ff;font-weight:700;text-align:left}
+  tbody tr{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  tbody td{padding:10px;border-right:1px solid rgba(255,255,255,.04)}
+  tbody td:last-child{border-right:none}
+  .actions{display:flex;gap:8px;justify-content:flex-end}
+  .chip{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1623}
+  .col-n{width:56px;text-align:right;opacity:.9}
+  .col-total{width:96px;text-align:right;white-space:nowrap}
+  .x{padding:6px 10px;border:1px solid #ff8b8b;color:#ffb4b4;border-radius:999px;background:transparent;cursor:pointer}
+
+  /* cartes sur mobile */
+  @media (max-width: 760px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
-    tbody tr{margin:14px 0}
-    tbody td{border:1px solid var(--line);border-radius:12px;margin:8px 0;padding:12px}
-    tbody td::before{content:attr(data-label);display:block;font-size:.9rem;color:var(--muted);margin-bottom:4px}
-    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    tbody{display:block}
+    tbody tr{margin:10px 0;padding:10px}
+    tbody td{border:none;padding:6px 0}
+    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:2px}
+    .actions{justify-content:flex-start}
   }
 
-  .vol{display:flex;align-items:center;gap:8px;margin-left:auto}
-  .vol input[type=range]{width:180px}
+  /* panneau erreurs */
+  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
+  #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
 </head>
 <body>
@@ -50,22 +59,15 @@
 
   <div class="panel">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API"
-        value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
+      <input id="api" type="text" placeholder="URL de l’API (…/exec)" value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
 
-      <!-- Son -->
-      <button id="enableSound" class="btn">🔔 Activer le son</button>
-      <div class="vol">
-        <span class="muted">Volume :</span>
-        <input id="volume" type="range" min="0" max="100" step="1">
+      <div class="vol-wrap">
+        <button id="enableAudio" class="btn">🔔 Activer le son</button>
+        <label class="muted" for="vol">Volume :</label>
+        <input id="vol" type="range" min="0" max="1" step="0.01" value="0.8">
       </div>
-
-      <!-- Fichier cloche -->
-      <audio id="bell" preload="auto">
-        <source src="https://cdn.freesound.org/previews/341/341695_5260877-lq.mp3" type="audio/mpeg">
-      </audio>
     </div>
     <div id="status" class="muted" style="margin-top:8px">—</div>
   </div>
@@ -74,140 +76,181 @@
     <table>
       <thead>
         <tr>
-          <th style="width:50px">#</th>
+          <th class="col-n">#</th>
           <th>Client</th>
           <th>Téléphone</th>
-          <th>Commandé à</th>
+          <th>HDC</th>
           <th>Horaire</th>
           <th>Pizzas</th>
-          <th style="width:90px">Total</th>
-          <th style="width:80px">Action</th>
+          <th class="col-total">Total</th>
+          <th style="width:80px;text-align:right">Action</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
 
-  <!-- Erreurs -->
-  <div id="err" class="panel" style="display:none;margin-top:12px;background:#2a1b1b;border-color:#5d2f2f">
-    <b>Erreur JavaScript</b>
-    <pre id="err-msg" style="white-space:pre-wrap;margin:8px 0 0;color:#ffd1d1"></pre>
-  </div>
+  <!-- Panneau erreurs -->
+  <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 </div>
 
+<!-- cloche courte -->
+<audio id="bell" preload="auto" crossorigin="anonymous">
+  <source src="https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.mp3" type="audio/mpeg">
+</audio>
+
 <script>
-/* Anti page blanche */
+/* ==== anti page blanche ==== */
 function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+window.addEventListener('error', e=>showErr(e.message+'\\n'+(e.error&&e.error.stack||'')));
 window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* Elements */
-const elApi=document.getElementById('api');
-const elRows=document.getElementById('rows');
-const elStatus=document.getElementById('status');
-const elBell=document.getElementById('bell');
-const elEnable=document.getElementById('enableSound');
-const elVol=document.getElementById('volume');
+/* ==== éléments ==== */
+const elApi   = document.getElementById('api');
+const elRows  = document.getElementById('rows');
+const elStat  = document.getElementById('status');
+const elVol   = document.getElementById('vol');
+const btnEA   = document.getElementById('enableAudio');
+const bellEl  = document.getElementById('bell');
 
-let COUNTER=0;
-let KNOWN=new Set();
-let soundReady=false;
+/* ==== état ==== */
+let SOUND_OK = false;
+let LAST_IDS = new Set();     // pour détecter les nouvelles commandes
+let seq = 0;                  // compteur visible dans la colonne #
 
-/* Helpers */
-const euro=v=>(Number(v)||0).toFixed(2).replace('.',',');
-const nowStr=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-const api=()=> (elApi.value||'').trim();
-const ok=m=>elStatus.innerHTML=`${nowStr()} — <span class="ok">${m||'OK'}</span>`;
-const err=m=>elStatus.innerHTML=`${nowStr()} — <span class="err">${m||'Erreur'}</span>`;
+/* ==== helpers ==== */
+const euro = v => (Number(v)||0).toFixed(2).replace('.', ',') + ' €';
+const nowStr = () => new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const api = () => (elApi.value||'').trim();
+const ok  = (m) => elStat.innerHTML = `${nowStr()} — <span class="ok">${m||'OK'}</span>`;
+const err = (m) => elStat.innerHTML = `${nowStr()} — <span class="err">${m||'Erreur'}</span>`;
 
-/* Volume */
-function setVolumeFromLS(){
-  const v=Number(localStorage.getItem('pizzamigo_vol')??70);
-  elVol.value=isNaN(v)?70:v;
-  elBell.volume=Math.max(0,Math.min(1,(elVol.value|0)/100));
+function slotStr(v){
+  if(typeof v==='string' && /^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
+  const d = new Date(v); if(!isNaN(d)) return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
+  return String(v||'');
 }
-elVol.addEventListener('input',()=>{
-  elBell.volume=Math.max(0,Math.min(1,(elVol.value|0)/100));
-  localStorage.setItem('pizzamigo_vol',elVol.value);
-});
+function orderTs(o){
+  return Number(o.ts)|| Date.parse(o.date||o.when||'') || (Date.now());
+}
+function pizzasStr(o){
+  if(Array.isArray(o.items)) {
+    return o.items.map(it=>{
+      const sup = (it.supplPrice>0) ? ` (+${Number(it.supplPrice).toFixed(0)}€ ${it.supplType||'suppl.'})` : '';
+      return `${it.name} × ${it.qty||1}${sup}`;
+    }).join('<br>');
+  }
+  if(Array.isArray(o.basket)){
+    return o.basket.map(it=>{
+      const sup = (it.suppl && Number(it.suppl)>0) ? ` (+1€ ${it.supplType||'suppl.'})` : '';
+      return `${it.name} × ${it.qty||1}${sup}`;
+    }).join('<br>');
+  }
+  return o.pizzas||'';
+}
 
-/* Activation son */
+/* ==== audio ==== */
+function loadPrefs(){
+  const u = localStorage.getItem('pza_api'); if(u) elApi.value=u;
+  const v = localStorage.getItem('pza_vol'); if(v) elVol.value=v;
+  if(localStorage.getItem('pza_sound')==='1'){ SOUND_OK=true; btnEA.style.display='none'; }
+  bellEl.volume = Number(elVol.value||0.8);
+}
 async function enableSound(){
   try{
-    await elBell.play();
-    elBell.pause();elBell.currentTime=0;
-    soundReady=true;
-    localStorage.setItem('pizzamigo_sound','1');
-    elEnable.style.display='none';
-  }catch(e){console.warn("Audio bloqué",e);}
+    await bellEl.play().then(()=>bellEl.pause()).catch(()=>{});
+    SOUND_OK = true;
+    localStorage.setItem('pza_sound','1');
+    btnEA.style.display='none';
+    bellEl.currentTime = 0; // prêt
+  }catch(e){
+    alert("Clique encore pour autoriser le son (bloqué par le navigateur).");
+  }
 }
-elEnable.addEventListener('click',enableSound);
+btnEA.addEventListener('click', enableSound);
+elVol.addEventListener('input', ()=>{ bellEl.volume = Number(elVol.value||0.8); localStorage.setItem('pza_vol', elVol.value); });
 
-function pingBell(){
-  if(!soundReady) return;
-  try{ elBell.currentTime=0; elBell.play().catch(()=>{});}catch(e){}
+async function ring(){
+  if(!SOUND_OK) return;
+  try{
+    bellEl.currentTime = 0;
+    await bellEl.play();
+  }catch(e){
+    // si bloqué, on réaffiche le bouton d’activation
+    btnEA.style.display='';
+    SOUND_OK = false;
+  }
 }
 
-/* Rendu */
-function renderTable(list){
-  // trier par date
-  list.sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''));
-  const newOnes=list.filter(o=>!KNOWN.has(String(o.id||'')));
-
+/* ==== rendu ==== */
+function td(label, html){
+  const c=document.createElement('td');
+  c.setAttribute('data-label', label);
+  c.innerHTML = html;
+  return c;
+}
+function render(list){
+  // tri: plus récente en haut
+  list.sort((a,b)=>orderTs(b)-orderTs(a));
   elRows.innerHTML='';
-  COUNTER=0;
-  list.forEach(o=>{
-    COUNTER++;
-    const tr=document.createElement('tr');
-    const td=(label,html)=>{const c=document.createElement('td');c.setAttribute('data-label',label);c.innerHTML=html;return c;};
+  seq = 0;
+  const seenNow = new Set();
 
-    tr.appendChild(td('#',COUNTER));
-    tr.appendChild(td('Client',o.name||''));
-    tr.appendChild(td('Téléphone',o.phone||''));
-    tr.appendChild(td('Commandé à', new Date(o.date||Date.now()).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})));
-    tr.appendChild(td('Horaire',(o.slot||'').replace(':','h')));
+  for(const o of list){
+    const id = o.id || o.ID || o.code || String(orderTs(o));
+    seenNow.add(id);
 
-    const basket=Array.isArray(o.basket)?o.basket:[];
-    const pizzas=basket.length?basket.map(it=>`${it.name} × ${it.qty||1}`).join('<br>'):(o.pizzas||'');
-    tr.appendChild(td('Pizzas',pizzas));
-    tr.appendChild(td('Total',`${euro(o.total||0)} €`));
+    const tr = document.createElement('tr');
 
-    const act=document.createElement('td');act.className='actions';
-    const x=document.createElement('button');x.className='btn red';x.textContent='✖';x.onclick=()=>tr.remove();
-    act.appendChild(x);tr.appendChild(act);
+    tr.appendChild(td('#', String(++seq)));
+    tr.appendChild(td('Client', o.name||''));
+    tr.appendChild(td('Téléphone', o.phone||''));
+    // HDC = heure d’envoi de la commande (JJ/MM HH:MM)
+    const d = new Date(orderTs(o));
+    const hdc = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    tr.appendChild(td('HDC', hdc));
+    // Horaire simple
+    tr.appendChild(td('Horaire', slotStr(o.slot||o.horaire||'')));
+    tr.appendChild(td('Pizzas', pizzasStr(o)));
+    tr.appendChild(td('Total', `<b>${euro(o.total||o.amount||0)}</b>`).classList = 'col-total');
+
+    const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
+    const del = document.createElement('button'); del.className='x'; del.textContent='✖'; del.title='Retirer de la liste';
+    del.onclick = ()=> tr.remove();
+    act.appendChild(del);
+    tr.appendChild(act);
 
     elRows.appendChild(tr);
-  });
+  }
 
-  if(newOnes.length>0) pingBell();
-  KNOWN=new Set(list.map(o=>String(o.id||'')));
+  // son si nouvelles commandes détectées
+  let hasNew = false;
+  for(const id of seenNow){ if(!LAST_IDS.has(id)) { hasNew=true; break; } }
+  LAST_IDS = seenNow;
+  if(hasNew) ring();
+
+  ok('OK');
 }
 
-/* API */
+/* ==== réseau ==== */
 async function getList(){
   try{
-    const url=api();
-    if(!url) return err('Renseigne l’URL de l’API');
-    const r=await fetch(url+'?list=1',{cache:'no-store'});
-    const data=await r.json();
-    const orders=Array.isArray(data?.orders)?data.orders:[]; 
-    renderTable(orders);
-    ok('OK');
-  }catch(e){console.error(e);err('Erreur réseau');}
+    const url = api(); if(!url) return err('Renseigne l’URL de l’API');
+    const r = await fetch(url+'?list=1',{cache:'no-store'});
+    const data = await r.json();
+    if(!data || data.ok===false) throw new Error(data && data.error || 'Réponse invalide');
+    render(Array.isArray(data.orders)?data.orders:data.data||[]);
+  }catch(e){ console.error(e); err('Erreur réseau'); }
 }
 
-/* Hooks */
-document.getElementById('save').onclick=()=>{localStorage.setItem('pizzamigo_api',elApi.value.trim());ok('Paramètres enregistrés');};
-document.getElementById('refresh').onclick=getList;
+/* ==== hooks ==== */
+document.getElementById('refresh').onclick = getList;
+document.getElementById('save').onclick = ()=>{ localStorage.setItem('pza_api', api()); ok('Paramètres enregistrés'); };
 
-/* Boot */
-(function boot(){
-  elApi.value=localStorage.getItem('pizzamigo_api')||elApi.value;
-  setVolumeFromLS();
-  if(localStorage.getItem('pizzamigo_sound')==='1'){soundReady=true;elEnable.style.display='none';}
-  getList();
-  setInterval(getList,10000);
-})();
+/* ==== init ==== */
+loadPrefs();
+getList();
+setInterval(getList, 10000);
 </script>
 </body>
 </html>
