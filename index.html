@@ -23,21 +23,27 @@
   .ok{color:var(--green)}
   .err{color:#ff9a9a}
 
-  table{width:100%;border-collapse:separate;border-spacing:0 10px}
+  /* tableau aéré */
+  table{width:100%;border-collapse:separate;border-spacing:0 12px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
-  tbody td{background:#0f1623;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}
-  tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
-  tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  tbody tr{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
+  tbody td{
+    background:#0f1623;border:1px solid var(--line);
+    padding:12px 14px;vertical-align:top;line-height:1.35;
+  }
+  tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
+  tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .actions .btn{padding:6px 10px}
 
+  /* Responsive : cartes */
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
-    tbody tr{margin:12px 0}
-    tbody td{border:1px solid var(--line);border-radius:12px;margin:6px 0;padding:10px 12px}
-    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:2px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    tbody tr{margin:14px 0}
+    tbody td{border-radius:12px;margin:6px 0;padding:10px 12px}
+    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+    .actions{justify-content:flex-start}
   }
 
   .sound{margin-left:auto;display:flex;align-items:center;gap:10px}
@@ -68,11 +74,11 @@
     <table>
       <thead>
         <tr>
-          <th style="width:90px">ID</th>
+          <th style="width:64px">#</th>
           <th>Client</th>
           <th>Téléphone</th>
-          <th style="width:70px">HDC</th>
-          <th style="width:90px">Horaire</th>
+          <th style="width:78px">HDC</th>
+          <th style="width:86px">Horaire</th>
           <th>Pizzas</th>
           <th style="width:90px">Total</th>
           <th style="width:80px">Action</th>
@@ -102,12 +108,18 @@ const elVol = document.getElementById('vol');
 const btnEnable = document.getElementById('audio-enable');
 const btnTest = document.getElementById('audio-test');
 
-let AUDIO_CTX = null;
-let AUDIO_GAIN = null;
-let AUDIO_UNLOCKED = false;
+let AUDIO_CTX = null, AUDIO_GAIN = null, AUDIO_UNLOCKED = false;
 
-let KNOWN = new Map();   // id -> order rendu
-let HDC_MAP = new Map(); // id -> timestamp figé (ms)
+/* persistences */
+const LS_API = 'pizz_api';
+const LS_VOL = 'pizz_vol';
+const LS_AUDIO = 'pizz_audio';
+const LS_HIDDEN = 'pizz_hidden';
+const LS_HDC = 'pizz_hdc';  // { id : ms }
+
+let HIDDEN = new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
+let HDC_MAP = new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
+let KNOWN = new Map();   // id -> last object
 
 /* ====== Helpers ====== */
 const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
@@ -125,11 +137,22 @@ function slotShort(v){
   if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
   const d=new Date(v); return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
 }
+function inferMsFromId(id){
+  if(!id) return NaN;
+  const m = String(id).match(/(\d{12,})$/); // prend la fin numérique (style 1759061880580)
+  if(m){ const n = Number(m[1]); if(!Number.isNaN(n)) return n; }
+  return NaN;
+}
 function createdMs(o){
   const raw = o.created ?? o.date ?? o.when ?? o.ts ?? o.time ?? o.timestamp;
-  if(raw){ const t = Date.parse(raw); if(!Number.isNaN(t)) return t; }
-  if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
-  const now = Date.now(); HDC_MAP.set(o.id, now); return now;
+  let t = Number.isFinite(Date.parse(raw||'')) ? Date.parse(raw) : NaN;
+  if(Number.isNaN(t)) t = inferMsFromId(o.id||o.ID||o.code);
+  if(Number.isNaN(t)){
+    if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
+    t = Date.now(); // dernier recours
+  }
+  if(!HDC_MAP.has(o.id)) { HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
+  return t;
 }
 
 /* ====== WebAudio bell (aucun fichier externe) ====== */
@@ -137,14 +160,12 @@ function ensureAudio(){
   if (AUDIO_CTX) return;
   AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
   AUDIO_GAIN = AUDIO_CTX.createGain();
-  AUDIO_GAIN.gain.value = Number(localStorage.getItem('pizz_vol')||'0.9');
+  AUDIO_GAIN.gain.value = Number(localStorage.getItem(LS_VOL)||'0.9');
   AUDIO_GAIN.connect(AUDIO_CTX.destination);
 }
 function ring(){
-  if(!AUDIO_UNLOCKED) return; // nécessite un clic utilisateur préalable
+  if(!AUDIO_UNLOCKED) return;
   ensureAudio();
-
-  // petit carillon avec 2 oscillateurs + enveloppe
   const t = AUDIO_CTX.currentTime;
   const env = AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t);
   env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01);
@@ -164,11 +185,9 @@ function ring(){
 /* ====== Audio UI ====== */
 function unlockAudio(){
   try{
-    ensureAudio();
-    AUDIO_CTX.resume();
-    AUDIO_UNLOCKED = true;
-    btnEnable.style.display='none';
-    localStorage.setItem('pizz_audio','1');
+    ensureAudio(); AUDIO_CTX.resume();
+    AUDIO_UNLOCKED = true; btnEnable.style.display='none';
+    localStorage.setItem(LS_AUDIO,'1');
   }catch(_){}
 }
 btnEnable.addEventListener('click', unlockAudio);
@@ -176,32 +195,35 @@ btnTest.addEventListener('click', ()=>{ unlockAudio(); ring(); });
 elVol.addEventListener('input', ()=>{
   const v = Number(elVol.value||'0.9');
   if(AUDIO_GAIN) AUDIO_GAIN.gain.value = v;
-  localStorage.setItem('pizz_vol', String(v));
+  localStorage.setItem(LS_VOL, String(v));
 });
 (function initVol(){
-  const v = Number(localStorage.getItem('pizz_vol')||'0.9');
+  const v = Number(localStorage.getItem(LS_VOL)||'0.9');
   elVol.value = String(v);
 })();
-if(localStorage.getItem('pizz_audio')==='1'){ setTimeout(unlockAudio,0); }
+if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
 
 /* ====== Render ====== */
 function render(list){
-  // ordre: plus récentes en haut
+  // filtre les IDs masqués de façon persistante
+  list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
+
+  // tri (plus récentes en haut)
   list.sort((a,b)=> createdMs(b)-createdMs(a));
 
   const prevIds = new Set(KNOWN.keys());
   elRows.innerHTML = '';
 
-  list.forEach(o=>{
+  list.forEach((o,idx)=>{
     const id = o.id || o.ID || o.code; if(!id) return;
     KNOWN.set(id,o);
 
-    const ms = createdMs(o); HDC_MAP.set(id,ms);
-
+    const ms = createdMs(o);
     const tr = document.createElement('tr');
     const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
 
-    tr.appendChild(td('ID', id));
+    // # = index humain (1,2,3…) + code complet en infobulle
+    tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
     tr.appendChild(td('Client', o.name||o.client||'' ));
     tr.appendChild(td('Téléphone', o.phone||'' ));
     tr.appendChild(td('HDC', hhmm(new Date(ms)) ));
@@ -217,8 +239,13 @@ function render(list){
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
     const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer de la vue';
-    x.onclick = ()=>{ tr.remove(); KNOWN.delete(id); };
+    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
+    x.onclick = ()=>{
+      const realId = id;
+      HIDDEN.add(realId);
+      localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN)));
+      tr.remove();
+    };
     act.appendChild(x);
     tr.appendChild(act);
 
@@ -250,15 +277,15 @@ async function refresh(){
 
 /* ====== Hooks & init ====== */
 document.getElementById('save').onclick = ()=>{
-  localStorage.setItem('pizz_api', elApi.value.trim());
-  localStorage.setItem('pizz_vol', String(elVol.value||'0.9'));
+  localStorage.setItem(LS_API, elApi.value.trim());
+  localStorage.setItem(LS_VOL, String(elVol.value||'0.9'));
   ok('Paramètres enregistrés');
 };
 document.getElementById('refresh').onclick = refresh;
 
 (function boot(){
-  elApi.value = localStorage.getItem('pizz_api') || elApi.value;
-  const v = Number(localStorage.getItem('pizz_vol')||'0.9'); elVol.value = String(v);
+  elApi.value = localStorage.getItem(LS_API) || elApi.value;
+  const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v);
   refresh();
   setInterval(refresh, 10000);
 })();
