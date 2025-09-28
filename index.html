@@ -3,230 +3,271 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard — PIZZ'AMIGO</title>
+<title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
-  h1{margin:6px 0 12px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  input[type=text]{flex:1 1 260px;min-width:220px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:#1a2333;color:#fff;border-radius:999px;padding:9px 14px;cursor:pointer}
-  .btn.primary{background:var(--green);color:#001b10;border:none}
+  :root{
+    --bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;
+    --green:#1fcf7c;--red:#e55252;--white:#ffffff;--accent:#ffb54c;
+  }
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
+  h1{margin:0 0 12px;font-size:32px;letter-spacing:.4px}
+  .bar{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+  .bar .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .inp, .btn, .pill{border-radius:12px;border:1px solid var(--line);background:#0e1420;color:#fff}
+  .inp{padding:10px 12px;min-width:260px;flex:1}
+  .btn{padding:8px 12px;background:#162033;border-color:#2a3655;cursor:pointer}
+  .btn.primary{background:var(--green);color:#001b10;border-color:transparent}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
+  .btn.warn{border-color:#ffb54c;color:#ffb54c}
   .muted{color:var(--muted)}
-  input[type=range]{width:120px}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px;vertical-align:middle;text-align:left}
-  .tag{padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:#233048}
-  .price{white-space:nowrap}
-  .actions .btn{padding:6px 10px}
-  @media (max-width:740px){ .hide-sm{display:none} table{font-size:14px} .actions .btn{padding:6px 8px} }
-  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:9999}
+  .t{width:100%;border-collapse:collapse;margin-top:12px}
+  .t th,.t td{border-bottom:1px solid rgba(255,255,255,.08);padding:10px 8px;vertical-align:top}
+  .t th{color:#cdd7ef;text-align:left;font-weight:700}
+  .status{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;min-width:54px;text-align:center}
+  .status[data-s="new"]{background:#18202e}
+  .status[data-s="ready"]{background:#13281f;border-color:#1f824e}
+  .status[data-s="done"]{background:#1f1f33;border-color:#5050b5}
+  .pill{padding:6px 10px;background:#162033;border-color:#2a3655;cursor:pointer}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
+  @media (max-width:720px){
+    .wrap{padding:0 8px}
+    .inp{min-width:200px}
+    .t th:nth-child(2), .t td:nth-child(2){display:none} /* cache l'ID sur mobile */
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Dashboard — PIZZ'AMIGO</h1>
+  <h1>Dashboard — PIZZ’AMIGO</h1>
 
-  <div class="card">
+  <div class="bar">
     <div class="row">
-      <input id="api" type="text" placeholder="URL API">
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)">
+      <input id="api" class="inp" placeholder="URL de l’API (Google Apps Script)">
+      <input id="adm" class="inp" placeholder="Clé admin (facultatif)">
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn" id="save">Enregistrer</button>
-      <button class="btn" id="refresh">Actualiser</button>
-      <button class="btn" id="demo">Démo</button>
-      <span id="status" class="muted">–</span>
-      <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <button class="btn" id="soundBtn">Activer le son</button>
-        <label class="muted" for="vol">Son :</label>
-        <input type="range" min="0" max="1" step="0.05" id="vol" value="0.8">
-      </span>
+      <button id="save" class="btn">Enregistrer</button>
+      <button id="refresh" class="btn">Actualiser</button>
+      <!-- Demo supprimée -->
+      <span id="net" class="muted" style="margin-left:auto">—</span>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label class="pill" style="display:flex;align-items:center;gap:8px">
+        <span>🔔 Activer le son</span>
+        <input id="snd" type="checkbox" style="accent-color:#1fcf7c">
+      </label>
+      <span>Son :</span>
+      <input id="vol" type="range" min="0" max="1" step="0.01" style="flex:1">
     </div>
   </div>
 
-  <div class="card" style="margin-top:12px;overflow:auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Heure</th>
-          <th class="hide-sm">ID</th>
-          <th class="hide-sm">Client</th>
-          <th class="hide-sm">Téléphone</th>
-          <th>Horaire</th>
-          <th>Pizzas</th>
-          <th>Total</th>
-          <th>Statut</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
+  <table class="t" id="tab">
+    <thead>
+      <tr>
+        <th>Heure</th>
+        <th>ID</th>
+        <th>Client</th>
+        <th>Téléphone</th>
+        <th>Horaire</th>
+        <th>Pizzas</th>
+        <th>Total</th>
+        <th>Statut</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
 </div>
 
-<!-- panneau erreur -->
+<!-- Panneau erreurs -->
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
-/* ===== Erreurs ===== */
-function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=String(msg);}
-window.addEventListener('error',e=>showErr(e.message));
-window.addEventListener('unhandledrejection',e=>showErr(e.reason||e));
+/* ===== mini panneau erreur ===== */
+function showErr(e){
+  const box=document.getElementById('err');
+  const msg=(e && e.message)||String(e);
+  box.style.display='block';
+  document.getElementById('err-msg').textContent=msg;
+}
 
-/* ===== Etat ===== */
-const S={
-  api: localStorage.getItem('pizz_api')||'https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec',
-  adm: localStorage.getItem('pizz_adm')||'PIZZAMIGO-ADMIN-123',
-  orders: new Map(),
-  ctx: null,
-  audioReady:false
+/* ===== état ===== */
+const S = {
+  list: [],
+  lastIds: new Set(),
+  bell: null,
+  sizeLimit: 200,           // on garde visible 200 lignes max
+  pollMs: 12_000            // auto-refresh
 };
-api.value = S.api; adm.value = S.adm;
 
-/* ===== Helpers ===== */
-const euro = v => Number(v||0).toFixed(2).replace('.',',')+' €';
-function hhmm(t){ if(/^\d{2}:\d{2}$/.test(t)) return t; const d=new Date(t||Date.now()); return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
-function parseItems(v){try{
-  if(Array.isArray(v)) return v;
-  if(typeof v==='string'){const j=JSON.parse(v); if(Array.isArray(j)) return j; if(j && Array.isArray(j.items)) return j.items;}
-  if(v && typeof v==='object' && Array.isArray(v.items)) return v.items;
-}catch(e){} return [];}
-function itemsText(o){
-  const arr = parseItems(o.items||o.basket||o.panier);
-  return arr.map(it=>{
-    const s = it.supplType ? ` (+1€ ${it.supplType})` : (it.suppl?` (+1€ ${it.suppl})`:'');
-    return `${it.name||''} × ${it.qty||1}${s}`;
-  }).join('<br>');
-}
-function rowHtml(o){
-  return `<tr data-id="${o.id}">
-    <td>${o.time||''}</td>
-    <td class="hide-sm">${o.id||''}</td>
-    <td class="hide-sm">${o.name||''}</td>
-    <td class="hide-sm">${o.phone||''}</td>
-    <td>${hhmm(o.slot||o.horaire||'')}</td>
-    <td>${itemsText(o)||'-'}</td>
-    <td class="price">${euro(o.total)}</td>
-    <td><span class="tag">${o.status||'new'}</span></td>
-    <td class="actions">
-      <button class="btn" data-act="ready" data-id="${o.id}">Prête</button>
-      <button class="btn" data-act="done" data-id="${o.id}">Terminée</button>
-      <button class="btn red" data-act="cancel" data-id="${o.id}">Annuler</button>
-    </td>
-  </tr>`;
-}
-function upsert(list){
-  const body=document.getElementById('rows'); let added=0;
-  (list||[]).forEach(o=>{
-    if(o.id && !S.orders.has(o.id)){
-      S.orders.set(o.id,o);
-      body.insertAdjacentHTML('afterbegin', rowHtml(o));
-      added++;
-    }
-  });
-  if(added>0) ring();
-}
+/* ===== stockage simple ===== */
+const store = {
+  get k(){return 'PZ_DASH_V3'},
+  read(){ try{return JSON.parse(localStorage.getItem(this.k)||'{}')}catch{return{}} },
+  write(obj){ localStorage.setItem(this.k, JSON.stringify(obj)) }
+};
 
-/* ===== Son cloche ===== */
-function ring(){
-  if(!S.audioReady||!S.ctx) return;
-  const g=S.ctx.createGain(), o=S.ctx.createOscillator();
-  o.type='triangle'; o.frequency.value=880;
-  const vol = +document.getElementById('vol').value || 0.8;
-  g.gain.value=0.001;
-  g.gain.exponentialRampToValueAtTime(vol, S.ctx.currentTime+0.02);
-  g.gain.exponentialRampToValueAtTime(0.001, S.ctx.currentTime+0.5);
-  o.connect(g); g.connect(S.ctx.destination);
-  o.start(); o.stop(S.ctx.currentTime+0.5);
-}
+/* ===== helpers ===== */
+const apiURL = () => (document.getElementById('api').value||'').trim();
+const adminKey = () => (document.getElementById('adm').value||'').trim();
+const euro = v => (Number(v)||0).toFixed(2).replace('.', ',')+' €';
+const hhmm = s => {
+  // s peut être '19:30' ou une date, on normalise en HH:MM
+  if (!s) return '';
+  if (/^\d{1,2}:\d{2}$/.test(s)) return s;
+  try{
+    const d = new Date(s);
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    return `${h}:${m}`;
+  }catch{return String(s)}
+};
 
-/* ===== Fetch util (text/plain anti-CORS) ===== */
-function apiURL(){ return (document.getElementById('api').value || S.api).trim(); }
-async function getJSON(params){
-  const u=new URL(apiURL());
-  Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r=await fetch(u.toString(), {cache:'no-store'});
-  const t=await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false, raw:t}; }
+async function getJSON(q){
+  const url = apiURL() + (q||'');
+  const r = await fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), {method:'GET'});
+  const t = await r.text();
+  try { return JSON.parse(t); } catch { return { ok:false, raw:t }; }
 }
 async function postJSON(bodyObj){
-  const r=await fetch(apiURL(),{
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
+  const r = await fetch(apiURL(), {
+    method: 'POST',
+    headers: { 'Content-Type':'text/plain;charset=utf-8' },
     body: JSON.stringify(bodyObj)
   });
-  const t=await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false, raw:t}; }
+  const t = await r.text();
+  try { return JSON.parse(t); } catch { return { ok:false, raw:t }; }
 }
 
-/* ===== Actions ===== */
-async function save(){
-  S.api = api.value.trim(); S.adm = adm.value.trim();
-  localStorage.setItem('pizz_api', S.api);
-  localStorage.setItem('pizz_adm', S.adm);
-  status.textContent='Paramètres enregistrés';
+/* ===== rendu ===== */
+function render(){
+  const tb = document.getElementById('rows');
+  tb.innerHTML = '';
+  for(const o of S.list){
+    const tr = document.createElement('tr');
+
+    const pizzasTxt = (o.basket||o.items||[]).map(it=>{
+      const sup = (it.supplPrice>0 ? ` (+${it.supplPrice.toFixed(1).replace('.',',')}€ ${it.supplType||''})` : '');
+      return `${it.name} × ${it.qty||1}${sup}`;
+    }).join('<br>');
+
+    tr.innerHTML = `
+      <td>${o.when||o.date||''}</td>
+      <td>${o.id||''}</td>
+      <td>${o.name||o.client||''}</td>
+      <td>${o.phone||''}</td>
+      <td>${hhmm(o.slot||o.horaire)}</td>
+      <td>${pizzasTxt||''}</td>
+      <td>${euro(o.total)}</td>
+      <td><span class="status" data-s="${o.status||'new'}">${o.status||'new'}</span></td>
+      <td class="row-actions"></td>
+    `;
+
+    const act = tr.querySelector('.row-actions');
+    // boutons statut (inchangés)
+    [['ready','Prête'],['done','Terminée'],['canceled','Annuler']].forEach(([s,label])=>{
+      const b=document.createElement('button');
+      b.className='btn'; b.textContent=label;
+      b.onclick=()=>updateStatus(o.id, s);
+      act.appendChild(b);
+    });
+    // nouveau : SUPPRIMER (efface la ligne du Sheet)
+    const del = document.createElement('button');
+    del.className='btn red';
+    del.textContent='Supprimer';
+    del.onclick=()=>deleteOrder(o.id);
+    act.appendChild(del);
+
+    tb.appendChild(tr);
+  }
 }
+
+/* ===== actions API ===== */
 async function refreshNow(){
   try{
-    const data = await getJSON({list:'today'});
-    if(data && data.ok!==false) {
-      upsert(data.orders || data.data || []);
-      status.textContent = new Date().toLocaleTimeString('fr-FR')+' — OK';
-    }else{
-      status.textContent='Erreur réseau';
-      showErr(data.raw||'Réponse invalide');
+    document.getElementById('net').textContent = 'Chargement…';
+    const data = await getJSON('?list=1'); // doGet → liste du jour
+    if(!data || data.ok===false){ document.getElementById('net').textContent='Erreur réseau'; showErr(data && (data.error||data.raw||JSON.stringify(data))); return; }
+
+    const arr = (data.orders||data||[]).slice(0,S.sizeLimit);
+    // détection des nouvelles pour la cloche
+    const newOnes = arr.filter(o=>!S.lastIds.has(o.id));
+    S.lastIds = new Set(arr.map(o=>o.id));
+
+    S.list = arr;
+    render();
+
+    document.getElementById('net').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' — OK';
+
+    if(newOnes.length && document.getElementById('snd').checked){
+      ring();
     }
-  }catch(e){ status.textContent='Erreur réseau'; showErr(e); }
+  }catch(e){ document.getElementById('net').textContent='Erreur réseau'; showErr(e); }
 }
-async function sendDemo(){
+
+async function updateStatus(id, status){
   try{
-    const res = await postJSON({
-      adminKey: S.adm,
-      demo: true,
-      name:'Test JSONP',
-      phone:'600000000',
-      slot:'19:30',
-      items:[{name:'Margharita',qty:1,price:8.5,supplType:'viande'}],
-      total:8.5
-    });
-    if(!res || res.ok===false){ alert("Échec d'envoi de la démo."); showErr(res && (res.error||res.raw)); return; }
-    await refreshNow();
-  }catch(e){ alert("Échec d'envoi de la démo."); showErr(e); }
-}
-async function setStatus(id, st){
-  try{
-    const res = await postJSON({adminKey:S.adm,setStatus:true,id,status:st});
-    if(res && res.ok!==false){
-      const tag=document.querySelector(`tr[data-id="${id}"] .tag`);
-      if(tag) tag.textContent = st;
-    }else{
-      showErr(res && (res.error||res.raw));
-    }
+    const res = await postJSON({ action:'status', id, status, adminKey: adminKey() });
+    if(!res || res.ok===false){ showErr(res && (res.error||res.raw||JSON.stringify(res))); return; }
+    refreshNow();
   }catch(e){ showErr(e); }
 }
-function enableSound(){
-  if(!S.ctx) S.ctx = new (window.AudioContext||window.webkitAudioContext)();
-  S.ctx.resume().then(()=>{ S.audioReady=true; soundBtn.textContent='Son actif'; ring(); });
+
+/* >>> nouveau : suppression définitive <<< */
+async function deleteOrder(id){
+  if(!confirm("Supprimer définitivement cette commande ?")) return;
+  try{
+    const res = await postJSON({ action:'delete', id, adminKey: adminKey() });
+    if(!res || res.ok===false){ showErr(res && (res.error||res.raw||JSON.stringify(res))); alert("Suppression impossible."); return; }
+    // Retire localement sans attendre le prochain poll
+    S.list = S.list.filter(o=>o.id!==id);
+    S.lastIds.delete(id);
+    render();
+  }catch(e){ showErr(e); alert("Suppression impossible."); }
 }
 
-/* ===== Bind ===== */
-save.onclick = save;
-refresh.onclick = refreshNow;
-demo.onclick = sendDemo;
-soundBtn.onclick = enableSound;
-rows.onclick = e=>{
-  const b=e.target.closest('button[data-act]');
-  if(!b) return;
-  setStatus(b.dataset.id, b.dataset.act);
-};
+/* ===== sonnerie ===== */
+function ring(){
+  try{
+    if(!S.bell){
+      S.bell = new Audio('https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.mp3'); // cloche courte, agréable
+    }
+    S.bell.volume = Number(document.getElementById('vol').value||'0.8');
+    // Safari/iOS : il faut une interaction utilisateur préalable pour autoriser play()
+    S.bell.play().catch(()=>{/* ignore */});
+  }catch(e){ showErr(e); }
+}
 
-/* ===== Boot ===== */
-refreshNow();
-setInterval(refreshNow, 5000);
+/* ===== init ===== */
+function init(){
+  // restaure préférences
+  const pref = store.read();
+  document.getElementById('api').value = pref.api || '';
+  document.getElementById('adm').value = pref.adm || '';
+  document.getElementById('snd').checked = !!pref.snd;
+  document.getElementById('vol').value = pref.vol ?? 0.85;
+
+  document.getElementById('save').onclick = ()=>{
+    store.write({
+      api: apiURL(), adm: adminKey(),
+      snd: document.getElementById('snd').checked,
+      vol: document.getElementById('vol').value
+    });
+    document.getElementById('net').textContent = 'Paramètres enregistrés';
+  };
+  document.getElementById('refresh').onclick = ()=>refreshNow();
+  document.getElementById('snd').onchange = ()=>store.write({...store.read(), snd:document.getElementById('snd').checked});
+  document.getElementById('vol').oninput = ()=>store.write({...store.read(), vol:document.getElementById('vol').value});
+
+  refreshNow();
+  setInterval(refreshNow, S.pollMs);
+}
+window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
+init();
 </script>
 </body>
 </html>
