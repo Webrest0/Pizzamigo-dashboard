@@ -24,18 +24,21 @@
   .ok{color:var(--green)}
   .err{color:#ff9a9a}
 
-  table{width:100%;border-collapse:collapse}
-  th,td{border-top:1px solid var(--line);padding:10px;vertical-align:top}
-  th{font-weight:700;text-align:left;color:#dfe8ff}
-  td .chip{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1623}
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
+  thead th{padding:10px;text-align:left;color:#dfe8ff}
+  tbody td{background:#0f1623;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}
+  tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
+  tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
+  td .chip{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#101a2a}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
   .actions .btn{padding:6px 10px}
 
   /* ====== Responsive : table -> cartes ====== */
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
-    tbody tr{border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0;background:var(--panel)}
-    tbody td{border:none;padding:6px 0}
+    tbody tr{margin:12px 0}
+    tbody td{border:1px solid var(--line);border-radius:12px;margin:6px 0;padding:10px 12px}
     tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:2px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
   }
@@ -55,7 +58,7 @@
       <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
-      <button id="demo" class="btn">Démo</button>
+      <!-- Démo supprimée -->
       <div class="sound-toggle">
         <span class="muted">Son :</span>
         <button id="enable-audio" class="pill">🔔 Activer le son</button>
@@ -68,15 +71,15 @@
     <table>
       <thead>
         <tr>
-          <th style="width:110px">Heure</th>
+          <!-- Colonne "Heure" supprimée -->
           <th>ID</th>
           <th>Client</th>
           <th>Téléphone</th>
           <th>Horaire</th>
           <th>Pizzas</th>
           <th style="width:90px">Total</th>
-          <th style="width:80px">Statut</th>
-          <th style="width:220px">Action</th>
+          <th style="width:90px">Statut</th>
+          <th style="width:260px">Action</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -112,7 +115,6 @@ function initAudio(){
   if (soundEnabled) return;
   try{
     audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
-    // Sur mobile il faut un geste utilisateur pour resume()
     audioCtx.resume();
     soundEnabled = true;
     localStorage.setItem('pizzamigo_sound','1');
@@ -128,7 +130,7 @@ function bell(){
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = 'triangle';
-  osc.frequency.setValueAtTime(880, t0);        // A5
+  osc.frequency.setValueAtTime(880, t0);
   osc.frequency.exponentialRampToValueAtTime(660, t0+0.12);
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(0.5, t0+0.01);
@@ -144,16 +146,32 @@ function api()  { return (elApi.value||'').trim(); }
 function ok(msg){ elStatus.innerHTML = `${nowStr()} — <span class="ok">${msg||'OK'}</span>`; }
 function err(msg){ elStatus.innerHTML = `${nowStr()} — <span class="err">${msg||'Erreur'}</span>`; }
 
+/* ====== Parse pizzas (gère string JSON) ====== */
+function parseBasket(o){
+  let b = o.basket ?? o.items ?? [];
+  if (typeof b === 'string'){
+    try{ b = JSON.parse(b); }catch{ b = []; }
+  }
+  return Array.isArray(b) ? b : [];
+}
+function shortSlot(v){
+  if(!v) return '';
+  if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
+  const d=new Date(v); const h=String(d.getHours()).padStart(2,'0'); const m=String(d.getMinutes()).padStart(2,'0');
+  return `${h}h${m}`;
+}
+
 /* ====== Render ====== */
 function renderTable(list){
   const prevIds = new Set(ORDERS.keys());
   elRows.innerHTML = '';
 
   list.forEach(o=>{
-    ORDERS.set(o.id, o);
+    const id = o.id || o.ID || '';
+    if(!id) return;
+    ORDERS.set(id, o);
 
     const tr = document.createElement('tr');
-
     const td = (label, html) => {
       const c = document.createElement('td');
       c.setAttribute('data-label', label);
@@ -161,38 +179,44 @@ function renderTable(list){
       return c;
     };
 
-    tr.appendChild(td('Heure', new Date(o.date||Date.now()).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})));
-    tr.appendChild(td('ID', o.id||''));
-    tr.appendChild(td('Client', o.name||''));
+    tr.appendChild(td('ID', id));
+    tr.appendChild(td('Client', o.name||o.client||''));
     tr.appendChild(td('Téléphone', o.phone||''));
-    tr.appendChild(td('Horaire', (o.slot||'').replace(':','h')));
-    // pizzas : affiche suppléments si présents
-    const pizzas = Array.isArray(o.basket)? o.basket.map(it=>{
-      const sup = it.suppl && Number(it.suppl)>0 ? ` (+1€ ${it.supplType||'suppl.'})` : '';
-      return `${it.name} × ${it.qty||1}${sup}`;
-    }).join('<br>') : (o.pizzas||o.items||'');
-    tr.appendChild(td('Pizzas', pizzas || ''));
+    tr.appendChild(td('Horaire', shortSlot(o.slot||o.horaire||'')));
+
+    const basket = parseBasket(o);
+    const pizzas = basket.length
+      ? basket.map(it=>{
+          const sup = (it.supplPrice||it.suppl) ? ` (+${(it.supplPrice||it.suppl)}€ ${it.supplType||'suppl.'})` : '';
+          return `${it.name} × ${it.qty||1}${sup}`;
+        }).join('<br>')
+      : (o.pizzas||'');
+    tr.appendChild(td('Pizzas', pizzas));
+
     tr.appendChild(td('Total', `${euro(o.total||0)} €`));
     tr.appendChild(td('Statut', `<span class="chip">${o.status||'new'}</span>`));
 
     // actions
     const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    ['Prête','Terminée','Annuler'].forEach(lbl=>{
-      const b=document.createElement('button'); b.className='btn';
-      b.textContent=lbl;
-      b.onclick=()=>updateStatus(o.id, lbl==='Prête'?'ready':lbl==='Terminée'?'done':'canceled');
-      act.appendChild(b);
-    });
-    const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer';
-    x.onclick=()=>{ tr.remove(); ORDERS.delete(o.id); };
+    const mk = (lbl, action, cls='btn')=>{
+      const b=document.createElement('button'); b.className=cls; b.textContent=lbl;
+      b.onclick=()=>updateStatus(id, action);
+      return b;
+    };
+    act.appendChild(mk('Prête','ready'));
+    act.appendChild(mk('Terminée','done'));
+    act.appendChild(mk('Annuler','canceled'));
+    act.appendChild(mk('Supprimer','delete','btn red'));      // => API delete (si géré côté Apps Script)
+    const x=document.createElement('button'); x.className='btn'; x.textContent='✖'; x.title='Retirer de la vue';
+    x.onclick=()=>{ tr.remove(); ORDERS.delete(id); };         // => suppression locale seulement
     act.appendChild(x);
-    tr.appendChild(act);
 
+    tr.appendChild(act);
     elRows.appendChild(tr);
   });
 
-  // Détection de nouvelles commandes => son
-  const newOnes = list.filter(o=>!prevIds.has(o.id));
+  // Son si nouvelles commandes
+  const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID));
   if(newOnes.length>0) bell();
 }
 
@@ -203,26 +227,11 @@ async function getList(){
     if(!url) return err('Renseigne l’URL de l’API');
     const r = await fetch(url+'?list=1',{cache:'no-store'});
     const data = await r.json();
-    if(!data.ok) throw new Error(data.error||'Réponse invalide');
-    renderTable(data.orders||[]);
+    if(!data || data.ok===false) throw new Error(data && data.error || 'Réponse invalide');
+    const orders = Array.isArray(data.orders) ? data.orders : (Array.isArray(data.data) ? data.data : []);
+    renderTable(orders);
     ok('OK');
   }catch(e){ console.error(e); err('Erreur réseau'); }
-}
-
-async function sendDemo(){
-  try{
-    const url = api();
-    const r = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({demo:1})
-    });
-    const data = await r.json().catch(()=>({ok:false}));
-    if(!r.ok || !data.ok) throw new Error('Echec envoi');
-    ok('Démo ajoutée'); // la cloche sonnera au prochain refresh si nouvelle ligne
-    // on force un refresh après 1s
-    setTimeout(getList, 1000);
-  }catch(e){ console.error(e); alert("Échec d’envoi de la démo."); err('Échec démo'); }
 }
 
 async function updateStatus(id, status){
@@ -248,17 +257,13 @@ document.getElementById('save').onclick = ()=>{
   ok('Paramètres enregistrés');
 };
 document.getElementById('refresh').onclick = getList;
-document.getElementById('demo').onclick = sendDemo;
 
 (function boot(){
   elApi.value = localStorage.getItem('pizzamigo_api') || elApi.value;
   elAdm.value = localStorage.getItem('pizzamigo_adm') || '';
-  // si l’utilisateur a déjà activé le son, cache le bouton
   if(localStorage.getItem('pizzamigo_sound')==='1'){ btnEnableAudio.style.display='none'; }
-  // premier chargement
   getList();
-  // poll toutes les 10s pour récupérer les nouvelles commandes sans jamais effacer celles affichées à la main
-  setInterval(getList, 10000);
+  setInterval(getList, 10000); // poll toutes les 10s
 })();
 </script>
 </body>
