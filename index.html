@@ -30,7 +30,7 @@
   .actions{display:flex;gap:8px;flex-wrap:wrap}
   .actions .btn{padding:6px 10px}
 
-  /* Mobile : table -> cartes + interlignes pour bien séparer */
+  /* Mobile */
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
@@ -55,16 +55,15 @@
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
 
-      <!-- Son : activer + volume -->
+      <!-- Son -->
       <button id="enableSound" class="btn">🔔 Activer le son</button>
       <div class="vol">
         <span class="muted">Volume :</span>
         <input id="volume" type="range" min="0" max="100" step="1">
       </div>
 
-      <!-- cloche -->
+      <!-- Fichier cloche -->
       <audio id="bell" preload="auto">
-        <!-- petite cloche douce -->
         <source src="https://cdn.freesound.org/previews/341/341695_5260877-lq.mp3" type="audio/mpeg">
       </audio>
     </div>
@@ -78,6 +77,7 @@
           <th style="width:50px">#</th>
           <th>Client</th>
           <th>Téléphone</th>
+          <th>Commandé à</th>
           <th>Horaire</th>
           <th>Pizzas</th>
           <th style="width:90px">Total</th>
@@ -88,7 +88,7 @@
     </table>
   </div>
 
-  <!-- Panneau erreurs -->
+  <!-- Erreurs -->
   <div id="err" class="panel" style="display:none;margin-top:12px;background:#2a1b1b;border-color:#5d2f2f">
     <b>Erreur JavaScript</b>
     <pre id="err-msg" style="white-space:pre-wrap;margin:8px 0 0;color:#ffd1d1"></pre>
@@ -101,158 +101,112 @@ function showErr(msg){const p=document.getElementById('err');p.style.display='bl
 window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
 window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* Elts & state */
-const elApi = document.getElementById('api');
-const elRows = document.getElementById('rows');
-const elStatus = document.getElementById('status');
-const elBell = document.getElementById('bell');
-const elEnable = document.getElementById('enableSound');
-const elVol = document.getElementById('volume');
+/* Elements */
+const elApi=document.getElementById('api');
+const elRows=document.getElementById('rows');
+const elStatus=document.getElementById('status');
+const elBell=document.getElementById('bell');
+const elEnable=document.getElementById('enableSound');
+const elVol=document.getElementById('volume');
 
-let COUNTER = 0;                   // compteur d’affichage (#)
-let KNOWN = new Set();             // ids déjà connus (pour déclencher le son uniquement sur nouvelles)
-let soundReady = false;
+let COUNTER=0;
+let KNOWN=new Set();
+let soundReady=false;
 
 /* Helpers */
-const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
-const nowStr = () => new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-const api = () => (elApi.value||'').trim();
-const ok  = m => elStatus.innerHTML = `${nowStr()} — <span class="ok">${m||'OK'}</span>`;
-const err = m => elStatus.innerHTML = `${nowStr()} — <span class="err">${m||'Erreur'}</span>`;
+const euro=v=>(Number(v)||0).toFixed(2).replace('.',',');
+const nowStr=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const api=()=> (elApi.value||'').trim();
+const ok=m=>elStatus.innerHTML=`${nowStr()} — <span class="ok">${m||'OK'}</span>`;
+const err=m=>elStatus.innerHTML=`${nowStr()} — <span class="err">${m||'Erreur'}</span>`;
 
-function getStamp(o){
-  // ordre : o.ts (num), Date.parse(o.date), timestamp présent dans l’ID ex: PZ-1759013405323
-  if(typeof o.ts === 'number') return o.ts;
-  const d = Date.parse(o.date||o.when||'');
-  if(!isNaN(d)) return d;
-  const m = String(o.id||'').match(/\d{10,}/);
-  return m ? Number(m[0]) : 0;
-}
-function shortSlot(v){
-  if(!v) return '';
-  if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
-  const t = Date.parse(v);
-  if(!isNaN(t)){ const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`; }
-  return String(v).replace(':','h');
-}
-function parseBasket(o){
-  let b = o.basket ?? o.items ?? [];
-  if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
-  return Array.isArray(b) ? b : [];
-}
-
-/* ===== Son : activation persistante + volume ===== */
+/* Volume */
 function setVolumeFromLS(){
-  const v = Number(localStorage.getItem('pizzamigo_vol') ?? 70);
-  elVol.value = isNaN(v) ? 70 : v;
-  elBell.volume = Math.max(0, Math.min(1, (elVol.value|0)/100));
+  const v=Number(localStorage.getItem('pizzamigo_vol')??70);
+  elVol.value=isNaN(v)?70:v;
+  elBell.volume=Math.max(0,Math.min(1,(elVol.value|0)/100));
 }
-elVol.addEventListener('input', ()=>{
-  elBell.volume = Math.max(0, Math.min(1, (elVol.value|0)/100));
-  localStorage.setItem('pizzamigo_vol', elVol.value);
+elVol.addEventListener('input',()=>{
+  elBell.volume=Math.max(0,Math.min(1,(elVol.value|0)/100));
+  localStorage.setItem('pizzamigo_vol',elVol.value);
 });
 
+/* Activation son */
 async function enableSound(){
   try{
-    // Un petit play/pause pour "débloquer" l'audio dans le navigateur
     await elBell.play();
-    elBell.pause(); elBell.currentTime = 0;
-    soundReady = true;
+    elBell.pause();elBell.currentTime=0;
+    soundReady=true;
     localStorage.setItem('pizzamigo_sound','1');
     elEnable.style.display='none';
-  }catch(e){ console.warn("Audio bloqué par le navigateur (besoin d'un clic)", e); }
+  }catch(e){console.warn("Audio bloqué",e);}
 }
-elEnable.addEventListener('click', enableSound);
+elEnable.addEventListener('click',enableSound);
 
 function pingBell(){
-  if(!soundReady) return;        // besoin d’une activation utilisateur au moins une fois
-  try{
-    elBell.currentTime = 0;
-    elBell.play().catch(()=>{});
-  }catch(e){}
+  if(!soundReady) return;
+  try{ elBell.currentTime=0; elBell.play().catch(()=>{});}catch(e){}
 }
 
 /* Rendu */
 function renderTable(list){
-  // tri : plus récentes en haut
-  list.sort((a,b)=>getStamp(b)-getStamp(a));
+  // trier par date
+  list.sort((a,b)=>Date.parse(b.date||'')-Date.parse(a.date||''));
+  const newOnes=list.filter(o=>!KNOWN.has(String(o.id||'')));
 
-  // détecte les nouvelles AVANT de mettre à jour KNOWN
-  const newOnes = list.filter(o => !KNOWN.has(String(o.id||'')));
-
-  // (ré)affiche
-  elRows.innerHTML = '';
-  COUNTER = 0;
+  elRows.innerHTML='';
+  COUNTER=0;
   list.forEach(o=>{
     COUNTER++;
-    const id = String(o.id||COUNTER);
+    const tr=document.createElement('tr');
+    const td=(label,html)=>{const c=document.createElement('td');c.setAttribute('data-label',label);c.innerHTML=html;return c;};
 
-    const tr = document.createElement('tr');
-    const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
+    tr.appendChild(td('#',COUNTER));
+    tr.appendChild(td('Client',o.name||''));
+    tr.appendChild(td('Téléphone',o.phone||''));
+    tr.appendChild(td('Commandé à', new Date(o.date||Date.now()).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})));
+    tr.appendChild(td('Horaire',(o.slot||'').replace(':','h')));
 
-    tr.appendChild(td('#', COUNTER));
-    tr.appendChild(td('Client', o.name||o.client||''));
-    tr.appendChild(td('Téléphone', o.phone||''));
-    tr.appendChild(td('Horaire', shortSlot(o.slot||o.horaire||'')));
+    const basket=Array.isArray(o.basket)?o.basket:[];
+    const pizzas=basket.length?basket.map(it=>`${it.name} × ${it.qty||1}`).join('<br>'):(o.pizzas||'');
+    tr.appendChild(td('Pizzas',pizzas));
+    tr.appendChild(td('Total',`${euro(o.total||0)} €`));
 
-    const basket = parseBasket(o);
-    const pizzas = basket.length
-      ? basket.map(it=>{
-          const sup = (it.supplPrice||it.suppl) ? ` (+${(it.supplPrice||it.suppl)}€ ${it.supplType||'suppl.'})` : '';
-          return `${it.name} × ${it.qty||1}${sup}`;
-        }).join('<br>')
-      : (o.pizzas||'');
-    tr.appendChild(td('Pizzas', pizzas));
-    tr.appendChild(td('Total', `${euro(o.total||0)} €`));
-
-    const act = document.createElement('td'); act.className='actions';
-    const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer';
-    x.onclick=()=>{ tr.remove(); /* local seulement */ };
-    act.appendChild(x);
-    tr.appendChild(act);
+    const act=document.createElement('td');act.className='actions';
+    const x=document.createElement('button');x.className='btn red';x.textContent='✖';x.onclick=()=>tr.remove();
+    act.appendChild(x);tr.appendChild(act);
 
     elRows.appendChild(tr);
   });
 
-  // met à jour les IDs connus & joue la cloche si nouvelles commandes
   if(newOnes.length>0) pingBell();
-  KNOWN = new Set(list.map(o=>String(o.id||'')));
+  KNOWN=new Set(list.map(o=>String(o.id||'')));
 }
 
 /* API */
 async function getList(){
   try{
-    const url = api();
+    const url=api();
     if(!url) return err('Renseigne l’URL de l’API');
-    const r = await fetch(url+'?list=1',{cache:'no-store'});
-    const data = await r.json();
-    const orders = Array.isArray(data?.orders) ? data.orders
-                  : Array.isArray(data?.data)   ? data.data
-                  : [];
+    const r=await fetch(url+'?list=1',{cache:'no-store'});
+    const data=await r.json();
+    const orders=Array.isArray(data?.orders)?data.orders:[]; 
     renderTable(orders);
     ok('OK');
-  }catch(e){ console.error(e); err('Erreur réseau'); }
+  }catch(e){console.error(e);err('Erreur réseau');}
 }
 
-/* Hooks & init */
-document.getElementById('save').onclick = ()=>{
-  localStorage.setItem('pizzamigo_api', elApi.value.trim());
-  ok('Paramètres enregistrés');
-};
-document.getElementById('refresh').onclick = getList;
+/* Hooks */
+document.getElementById('save').onclick=()=>{localStorage.setItem('pizzamigo_api',elApi.value.trim());ok('Paramètres enregistrés');};
+document.getElementById('refresh').onclick=getList;
 
+/* Boot */
 (function boot(){
-  elApi.value = localStorage.getItem('pizzamigo_api') || elApi.value;
+  elApi.value=localStorage.getItem('pizzamigo_api')||elApi.value;
   setVolumeFromLS();
-
-  // Si l'utilisateur a déjà activé le son auparavant, on le prépare automatiquement
-  if(localStorage.getItem('pizzamigo_sound') === '1'){
-    soundReady = true;
-    elEnable.style.display='none';
-  }
-
+  if(localStorage.getItem('pizzamigo_sound')==='1'){soundReady=true;elEnable.style.display='none';}
   getList();
-  setInterval(getList, 10000);
+  setInterval(getList,10000);
 })();
 </script>
 </body>
