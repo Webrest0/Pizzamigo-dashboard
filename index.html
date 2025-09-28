@@ -137,7 +137,8 @@
     for (const o of list){
       const tr = document.createElement('tr');
 
-      const items = (o.items || o.basket || []).map(it=>{
+     const items = (o.basket && Array.isArray(o.basket.items)) ? o.basket.items : [];
+const pizzas = items.map(it => `${it.name} × ${it.qty}`).join('<br>');
         const sup = it.supplType ? ` (+1€ ${it.supplType})` : (it.suppl?' (+1€)': '');
         return `${it.qty||it.q||1} × ${it.name||it.n||''}${sup}`;
       }).join('<br>');
