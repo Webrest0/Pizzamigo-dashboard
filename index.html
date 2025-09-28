@@ -7,7 +7,7 @@
 <style>
   :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252}
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
   .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
   h1{margin:6px 0 12px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
@@ -34,7 +34,7 @@
 
   <div class="card">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l'API Google Apps Script">
+      <input id="api" type="text" placeholder="URL API">
       <input id="adm" type="text" placeholder="Cle admin (facultatif)">
     </div>
     <div class="row" style="margin-top:8px">
@@ -51,13 +51,13 @@
   </div>
 
   <div class="card" style="margin-top:12px;overflow:auto">
-    <table id="tbl">
+    <table>
       <thead>
         <tr>
           <th>Heure</th>
           <th class="hide-sm">ID</th>
           <th class="hide-sm">Client</th>
-          <th class="hide-sm">Telephone</th>
+          <th class="hide-sm">Tel</th>
           <th>Horaire</th>
           <th>Pizzas</th>
           <th>Total</th>
@@ -73,74 +73,48 @@
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
-/* ==== anti page blanche ==== */
-function showErr(msg){var b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error',function(e){showErr(e.message+"\n"+(e.error&&e.error.stack||""));});
-window.addEventListener('unhandledrejection',function(e){showErr('Promise rejetee: '+(e.reason&&e.reason.message||e.reason));});
+/* ==== erreurs ==== */
+function showErr(msg){let b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
+window.addEventListener('error',e=>showErr(e.message));
+window.addEventListener('unhandledrejection',e=>showErr(e.reason));
 
 /* ==== etat ==== */
-var S={api:localStorage.getItem('pizz_api')||'',adm:localStorage.getItem('pizz_adm')||'PIZZAMIGO-ADMIN-123',orders:new Map(),ctx:null,audioReady:false,timer:null};
+const S={api:localStorage.getItem('pizz_api')||'',adm:localStorage.getItem('pizz_adm')||'PIZZAMIGO-ADMIN-123',orders:new Map(),ctx:null,audioReady:false};
 document.getElementById('api').value=S.api;
 document.getElementById('adm').value=S.adm;
 
 /* ==== helpers ==== */
 function euro(v){return Number(v||0).toFixed(2).replace('.',',')+' €';}
-function hhmm(t){ if(/^\d{2}:\d{2}$/.test(t||'')) return t; var d=new Date(t||Date.now()); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
-function parseItems(v){
-  try{
-    if(Array.isArray(v)) return v;
-    if(typeof v==='string'&&v.trim()){
-      var j=JSON.parse(v);
-      if(Array.isArray(j)) return j;
-      if(j&&Array.isArray(j.items)) return j.items;
-    }
-    if(v&&typeof v==='object'&&Array.isArray(v.items)) return v.items;
-  }catch(e){}
-  return [];
-}
-function itemsText(o){
-  var arr=parseItems(o.items||o.basket||o.panier||[]);
-  return arr.map(function(it){
-    var sup = (it.supplType||it.suppl||'') ? ' (+1€ '+(it.supplType||it.suppl)+')' : '';
-    return (it.name||it.n||'')+' × '+(it.qty||it.q||1)+sup;
-  }).join('<br>');
-}
-function rowHtml(o){
-  var total = o.total!=null ? o.total : (o.total11!=null?o.total11:0);
-  return '<tr data-id="'+(o.id||'')+'">'+
-    '<td>'+(o.time||o.when||'')+'</td>'+
-    '<td class="hide-sm">'+(o.id||'')+'</td>'+
-    '<td class="hide-sm">'+(o.name||o.client||'')+'</td>'+
-    '<td class="hide-sm">'+(o.phone||'')+'</td>'+
-    '<td>'+hhmm(o.slot||o.horaire||o.when||'')+'</td>'+
-    '<td>'+(itemsText(o)||'-')+'</td>'+
-    '<td class="price">'+euro(total)+'</td>'+
-    '<td><span class="tag">'+(o.status||'new')+'</span></td>'+
-    '<td class="actions">'+
-      '<button class="btn" onclick="setStatus(\''+(o.id||'')+'\',\'ready\')">Prete</button> '+
-      '<button class="btn" onclick="setStatus(\''+(o.id||'')+'\',\'done\')">Terminee</button> '+
-      '<button class="btn red" onclick="setStatus(\''+(o.id||'')+'\',\'cancel\')">Annuler</button> '+
-      '<button class="btn" onclick="removeRow(\''+(o.id||'')+'\')">×</button>'+
-    '</td>'+
-  '</tr>';
-}
-function upsert(list){
-  var body=document.getElementById('rows'), added=0;
-  (Array.isArray(list)?list:[]).forEach(function(o){
-    if(!o||!o.id) return;
-    if(!S.orders.has(o.id)){
-      S.orders.set(o.id,o);
-      body.insertAdjacentHTML('afterbegin',rowHtml(o));
-      added++;
-    }
-  });
-  if(added>0) ring();
-}
-function ring(){
-  if(!S.audioReady||!S.ctx) return;
-  var g=S.ctx.createGain(), o=S.ctx.createOscillator();
-  o.type='triangle'; o.frequency.value=880;
-  g.gain.value=0.0001;
-  g.gain.exponentialRampToValueAtTime(Math.max(0.02,+document.getElementById('vol').value), S.ctx.currentTime+0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, S.ctx.currentTime+0.35);
-  o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+0.35);
+function hhmm(t){if(/^\d{2}:\d{2}$/.test(t)) return t;let d=new Date(t||Date.now());return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function parseItems(v){try{if(Array.isArray(v))return v;if(typeof v==='string'){let j=JSON.parse(v);return Array.isArray(j)?j:(j.items||[]);}if(v&&typeof v==='object'&&Array.isArray(v.items))return v.items;}catch{} return [];}
+function itemsText(o){return parseItems(o.items||o.basket||o.panier).map(it=>`${it.name||''} × ${it.qty||1}${it.suppl? ' (+1€ '+it.suppl+')':''}`).join('<br>');}
+function rowHtml(o){return `<tr data-id="${o.id}"><td>${o.time||''}</td><td class="hide-sm">${o.id||''}</td><td class="hide-sm">${o.name||''}</td><td class="hide-sm">${o.phone||''}</td><td>${hhmm(o.slot||o.horaire||'')}</td><td>${itemsText(o)||'-'}</td><td class="price">${euro(o.total)}</td><td><span class="tag">${o.status||'new'}</span></td><td class="actions"><button class="btn" data-act="ready" data-id="${o.id}">Prete</button> <button class="btn" data-act="done" data-id="${o.id}">Terminee</button> <button class="btn red" data-act="cancel" data-id="${o.id}">Annuler</button></td></tr>`;}
+function upsert(list){let body=document.getElementById('rows'),added=0;(list||[]).forEach(o=>{if(o.id&&!S.orders.has(o.id)){S.orders.set(o.id,o);body.insertAdjacentHTML('afterbegin',rowHtml(o));added++;}});if(added>0) ring();}
+function ring(){if(!S.audioReady||!S.ctx)return;let g=S.ctx.createGain(),o=S.ctx.createOscillator();o.type='triangle';o.frequency.value=880;g.gain.value=0.001;g.gain.exponentialRampToValueAtTime(+document.getElementById('vol').value, S.ctx.currentTime+0.02);g.gain.exponentialRampToValueAtTime(0.001, S.ctx.currentTime+0.4);o.connect(g);g.connect(S.ctx.destination);o.start();o.stop(S.ctx.currentTime+0.4);}
+
+/* ==== API ==== */
+function apiUrl(){return (document.getElementById('api').value||S.api).trim();}
+async function apiGet(p){let u=new URL(apiUrl());Object.entries(p||{}).forEach(([k,v])=>u.searchParams.set(k,v));let r=await fetch(u);return r.json();}
+async function apiPost(o){let r=await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});return r.json();}
+
+/* ==== actions ==== */
+async function save(){S.api=document.getElementById('api').value.trim();S.adm=document.getElementById('adm').value.trim();localStorage.setItem('pizz_api',S.api);localStorage.setItem('pizz_adm',S.adm);document.getElementById('status').textContent='Enregistre';}
+async function refresh(){try{let d=await apiGet({list:'today'});upsert(d.orders||[]);document.getElementById('status').textContent='OK '+new Date().toLocaleTimeString();}catch(e){showErr(e);}}
+async function demo(){try{let res=await apiPost({adminKey:S.adm,demo:true,name:'Test JSONP',phone:'600000000',slot:'19:30',items:[{name:'Margharita',qty:1,price:8.5}],total:8.5});if(!res.ok) throw new Error(res.error||'fail');await refresh();}catch(e){alert('Echec demo');showErr(e);}}
+function enableSound(){if(!S.ctx)S.ctx=new (AudioContext||webkitAudioContext)();S.ctx.resume().then(()=>{S.audioReady=true;document.getElementById('soundBtn').textContent='Son actif';});}
+async function setStatus(id,st){try{await apiPost({adminKey:S.adm,setStatus:true,id,status:st});let tag=document.querySelector(`tr[data-id="${id}"] .tag`);if(tag) tag.textContent=st;}catch(e){showErr(e);}}
+
+/* ==== bind boutons ==== */
+document.getElementById('save').onclick=save;
+document.getElementById('refresh').onclick=refresh;
+document.getElementById('demo').onclick=demo;
+document.getElementById('soundBtn').onclick=enableSound;
+document.getElementById('rows').onclick=e=>{
+  if(e.target.dataset.act){setStatus(e.target.dataset.id,e.target.dataset.act);}
+};
+
+/* ==== boot ==== */
+refresh();setInterval(refresh,5000);
+</script>
+</body>
+</html>
