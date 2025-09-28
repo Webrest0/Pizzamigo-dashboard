@@ -11,37 +11,44 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:980px;margin:20px auto;padding:0 14px}
-
-  h1{margin:0 0 14px;font-size:34px;font-weight:900;letter-spacing:.5px}
+  .wrap{max-width:1080px;margin:22px auto;padding:0 14px}
+  h1{margin:0 0 14px;font-size:36px;line-height:1.1}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px}
-  .cfg{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  input[type="text"]{width:100%;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
-  .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  input[type=text]{flex:1 1 380px;min-width:260px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:12px;padding:10px}
+  .btn{border:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
   .btn.primary{background:var(--green);color:#001b10;border-color:transparent}
-  .btn.red{border-color:#ff8b8b;color:#ffb4b4}
+  .btn.red{border-color:#ff9a9a;color:#ffc9c9}
   .btn.small{padding:6px 10px;font-size:.95rem}
-
-  .state{color:#9fb3d7;font-size:.95rem;text-align:right}
-  .bell{display:inline-flex;gap:6px;align-items:center;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 12px;cursor:pointer}
-  .bell.warn{border-color:#e0b84a;color:#ffd07a}
-  .vol{flex:1;min-width:120px}
-
-  table{width:100%;border-collapse:collapse;margin-top:14px}
-  th,td{border-bottom:1px solid rgba(255,255,255,.1);padding:10px 8px;vertical-align:top}
-  th{color:#cfd6e7;text-align:left;font-weight:700}
-  td .tag{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0e1420}
-  .actions{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.25);padding:8px 12px;border-radius:999px}
+  .tag.warn{border-color:#ffd591;color:#ffd591;background:rgba(255,181,76,.06)}
   .muted{color:var(--muted)}
+  .right{margin-left:auto}
+  .vol{display:flex;align-items:center;gap:10px}
+
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{border-bottom:1px solid rgba(255,255,255,.07);padding:12px 10px;vertical-align:top}
+  th{font-weight:700;text-align:left;color:#cfe0ff}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .status{padding:4px 8px;border:1px solid var(--line);border-radius:999px}
+  .status.new{color:#e0e8ff;border-color:#6171a0}
+  .status.ready{color:#ffe6b3;border-color:#a0834a}
+  .status.done{color:#b2ffd9;border-color:#1fcf7c}
+  .status.canceled{color:#ffc1c1;border-color:#e55252}
+
+  /* mobile */
+  @media (max-width:720px){
+    h1{font-size:28px}
+    .row input[type=text]{flex:1 1 100%}
+    th:nth-child(2), td:nth-child(2){display:none;} /* cache ID sur mobile */
+    th:nth-child(5), td:nth-child(5){display:none;} /* cache téléphone sur mobile */
+    th:nth-child(7), td:nth-child(7){display:none;} /* cache total, laissé dans les pizzas */
+  }
+
+  /* panneau erreur */
   #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
-  @media (max-width:740px){
-    .cfg{grid-template-columns:1fr}
-    .state{text-align:left}
-    th:nth-child(3), td:nth-child(3){display:none} /* cache colonne Client sur mobile pour respirer */
-  }
 </style>
 </head>
 <body>
@@ -49,20 +56,19 @@
   <h1>Dashboard — PIZZ’AMIGO</h1>
 
   <div class="panel">
-    <div class="cfg">
-      <div class="row" style="width:100%">
-        <input id="api" type="text" placeholder="https://script.google.com/macros/.../exec" />
-        <input id="adm" type="text" placeholder="PIZZAMIGO-ADMIN-123" style="max-width:260px" />
-        <button id="save" class="btn">Enregistrer</button>
-        <button id="refresh" class="btn">Actualiser</button>
-      </div>
-      <div class="state"><span id="net">—</span></div>
-    </div>
+    <div class="row">
+      <input id="api" type="text" placeholder="URL de l’API (Apps Script)">
+      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
+      <button id="save" class="btn">Enregistrer</button>
+      <button id="refresh" class="btn">Actualiser</button>
 
+      <span class="right muted" id="net">—</span>
+    </div>
     <div class="row" style="margin-top:10px">
-      <button id="snd" class="bell warn">🔔 Activer le son</button>
-      <label class="muted">Son :</label>
-      <input id="vol" type="range" class="vol" min="0" max="1" step="0.01" value="0.70" />
+      <label class="tag warn"><span>🔔</span> <input id="snd" type="checkbox" style="margin-right:6px"> Activer le son</label>
+      <div class="vol">Son :
+        <input id="vol" type="range" min="0" max="1" step=".01" value=".8" style="width:220px">
+      </div>
     </div>
   </div>
 
@@ -84,183 +90,190 @@
       <tbody id="tb"></tbody>
     </table>
   </div>
-
-  <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 </div>
 
+<!-- Panneau erreur -->
+<div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
+
 <script>
-  /* ---- Panneau erreur discret ---- */
-  function showErr(msg){const b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
-  window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
-  window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
+/*** utilitaires ***/
+const $ = sel => document.querySelector(sel);
+function showErr(msg,txt){
+  const b = $('#err'); b.style.display='block';
+  $('#err-msg').textContent = (msg||'') + (txt ? ('\\n'+txt) : '');
+  console.error('Dashboard error:', msg, txt||'');
+}
+const euro = n => (Number(n)||0).toFixed(2).replace('.', ',')+' €';
+const hhmm = s => {
+  if(!s) return '—';
+  try{
+    // accepte "19:30", timestamp, ou date iso
+    if(String(s).match(/^\\d{1,2}:\\d{2}$/)) return s;
+    const d = new Date(s);
+    if(!isNaN(d)) return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }catch(e){}
+  return String(s);
+};
 
-  /* ---- Helper: force JSON + message clair si HTML ---- */
-  async function getJSON(url, opts={}){
-    const res = await fetch(url, {cache:'no-store', redirect:'follow', ...opts});
-    try { return await res.json(); }
-    catch(_) {
-      const txt = await res.text();
-      throw new Error('Réponse non JSON: ' + txt.slice(0,200));
-    }
+/*** état + sonnerie ***/
+const store = {
+  read(){ try{return JSON.parse(localStorage.getItem('pzadm')||'{}')}catch{return{}} },
+  write(o){ localStorage.setItem('pzadm', JSON.stringify(o)); }
+};
+let pref = Object.assign({api:'', adminkey:'', snd:false, vol:.8}, store.read());
+let bell, unlocked=false;
+
+/*** API helpers ***/
+function safeJSON(text){
+  try{ return JSON.parse(text); }catch(e){ return {ok:false, nonjson:true, raw:text}; }
+}
+async function apiGetList(){
+  const url = new URL(pref.api);
+  url.searchParams.set('list','1');
+  const r = await fetch(url.toString(), {method:'GET'});
+  const t = await r.text();
+  const data = safeJSON(t);
+  if(!data.ok && !data.orders){
+    throw new Error(data.nonjson ? 'Réponse non JSON' : (data.error||'Réponse invalide'));
   }
+  return (data.orders||[]);
+}
+async function apiPost(payload){
+  const r = await fetch(pref.api, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(payload)
+  });
+  const t = await r.text();
+  const data = safeJSON(t);
+  if(!r.ok || data.ok===false){
+    throw new Error((data && (data.error||data.message)) || ('HTTP '+r.status));
+  }
+  return data;
+}
 
-  /* ---- State local ---- */
-  const store = {
-    read(){ try{return JSON.parse(localStorage.getItem('pzadm')||'{}')}catch{return{}} },
-    write(v){ localStorage.setItem('pzadm', JSON.stringify(v||{})) }
+/*** rendu ***/
+function normalizeBasket(o){
+  // cherche items dans plusieurs formes possibles
+  try{
+    if(typeof o.panier === 'string') o.panier = JSON.parse(o.panier);
+  }catch(e){}
+  const b = o.basket || o.panier || {};
+  let items = [];
+  if (Array.isArray(b)) items = b;
+  else if (Array.isArray(b.items)) items = b.items;
+  else if (Array.isArray(o.items)) items = o.items;
+  // sécurise
+  if(!Array.isArray(items)) items = [];
+  return items;
+}
+
+function render(list){
+  const tb = $('#tb'); tb.innerHTML = '';
+  for(const o of list){
+    const items = normalizeBasket(o);
+    const pizzas = items.map(it => {
+      const sup = it.supplType ? ` (+1€ ${it.supplType})` : '';
+      return `${it.name} × ${it.qty}${sup}`;
+    }).join('<br>');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${o.when ? hhmm(o.when) : '—'}</td>
+      <td>${o.id || '—'}</td>
+      <td>${o.name || '—'}</td>
+      <td>${o.phone || '—'}</td>
+      <td>${o.slot ? hhmm(o.slot) : '—'}</td>
+      <td>${pizzas||'—'}</td>
+      <td>${euro(o.total)}</td>
+      <td><span class="status ${o.status||'new'}">${o.status||'new'}</span></td>
+      <td class="actions">
+        <button class="btn small" data-act="ready">Prête</button>
+        <button class="btn small" data-act="done">Terminée</button>
+        <button class="btn small" data-act="canceled">Annuler</button>
+        <button class="btn small red" data-act="delete">Supprimer</button>
+      </td>
+    `;
+    // actions
+    tr.querySelectorAll('button[data-act]').forEach(b=>{
+      b.onclick = async () => {
+        try{
+          const act = b.getAttribute('data-act');
+          if(act === 'delete'){
+            if(!confirm('Supprimer cette commande ?')) return;
+            await apiPost({action:'delete', id:o.id, adminkey:pref.adminkey});
+          }else{
+            await apiPost({action:'status', id:o.id, status:act, adminkey:pref.adminkey});
+          }
+          await refreshNow(true);
+        }catch(err){ showErr('Action échouée', String(err)); }
+      };
+    });
+    tb.appendChild(tr);
+  }
+}
+
+/*** rafraîchissement ***/
+let lastIds=new Set();
+async function refreshNow(manual=false){
+  if(!pref.api){ $('#net').textContent='URL API manquante'; return; }
+  try{
+    $('#net').textContent='Chargement…';
+    const orders = await apiGetList();
+    render(orders);
+
+    // son si nouvelle(s) commande(s)
+    const ids = new Set(orders.map(o=>o.id));
+    const hasNew = [...ids].some(id => !lastIds.has(id));
+    lastIds = ids;
+    if(hasNew && pref.snd && bell){
+      // jouer seulement si l’utilisateur a déjà interagi
+      try{ await bell.play(); }catch(_){}
+    }
+    $('#net').textContent = new Date().toLocaleTimeString('fr-FR')+' — OK';
+  }catch(err){
+    $('#net').textContent='Erreur réseau';
+    showErr(err.message);
+  }
+}
+
+/*** init ***/
+function init(){
+  // UI init
+  $('#api').value = pref.api||'';
+  $('#adm').value = pref.adminkey||'';
+  $('#snd').checked = !!pref.snd;
+  $('#vol').value = pref.vol ?? .8;
+
+  // events
+  $('#save').onclick = () => {
+    pref.api = $('#api').value.trim();
+    pref.adminkey = $('#adm').value.trim();
+    store.write(pref);
+    $('#net').textContent='Paramètres enregistrés';
   };
+  $('#refresh').onclick = () => refreshNow(true);
+  $('#snd').onchange = ()=>{ pref.snd = $('#snd').checked; store.write(pref); };
+  $('#vol').oninput  = ()=>{ pref.vol = Number($('#vol').value)||.8; if(bell) bell.volume = pref.vol; store.write(pref); };
 
-  let apiURL = '';
-  let adminKey = '';
-  let bell = null;
-  let bellReady = false;
-  let lastIds = new Set(); // pour ne sonner qu’aux nouvelles commandes
+  // bell
+  bell = new Audio('https://cdn.jsdelivr.net/gh/maphna/tinyfiles@master/chime.mp3');
+  bell.volume = pref.vol ?? .8;
+  // déverrouiller l'audio après 1ère interaction
+  const unlock = ()=>{ if(unlocked) return; bell.play().then(()=>{ unlocked=true; }).catch(()=>{}); window.removeEventListener('click', unlock); };
+  window.addEventListener('click', unlock);
 
-  /* ---- Audio ---- */
-  function prepareBell(){
-    if (!bell) bell = new Audio('https://cdn.jsdelivr.net/gh/maphdev/tinyfiles@master/chime.mp3');
-    bell.volume = Number(document.getElementById('vol').value||'0.7');
-    bell.play().then(()=>{ bell.pause(); bell.currentTime=0; bellReady=true; })
-                .catch(()=>{ /* besoin d’une interaction d’abord */ });
-  }
+  // premier chargement + polling toutes les 5 s
+  refreshNow(true);
+  setInterval(refreshNow, 5000);
+}
 
-  /* ---- Rendu tableau ---- */
-  function renderList(list){
-    const tb = document.getElementById('tb'); tb.innerHTML='';
-    const safe = x => (x==null?'':String(x));
-    const fmtTime = t => {
-      try{ const d=new Date(t); if(!isNaN(d)) return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch{}
-      // fallback si t est déjà "19:30"
-      return safe(t);
-    };
+/*** sécurité globale ***/
+window.addEventListener('error', e=>showErr(e.message, (e.error&&e.error.stack)||''));
+window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-    for (const o of list){
-      const tr = document.createElement('tr');
-
-     const items = (o.basket && Array.isArray(o.basket.items)) ? o.basket.items : [];
-const pizzas = items.map(it => `${it.name} × ${it.qty}`).join('<br>');
-        const sup = it.supplType ? ` (+1€ ${it.supplType})` : (it.suppl?' (+1€)': '');
-        return `${it.qty||it.q||1} × ${it.name||it.n||''}${sup}`;
-      }).join('<br>');
-
-      tr.innerHTML = `
-        <td class="muted">${fmtTime(o.when || o.date || '')}</td>
-        <td class="muted">${safe(o.id||'')}</td>
-        <td>${safe(o.name||'')}</td>
-        <td>${safe(o.phone||'')}</td>
-        <td>${fmtTime(o.slot||'')}</td>
-        <td>${items||''}</td>
-        <td>${(Number(o.total||0)).toFixed(2).replace('.',',')} €</td>
-        <td><span class="tag">${safe(o.status||'new')}</span></td>
-        <td class="actions"></td>
-      `;
-
-      const act = tr.querySelector('.actions');
-
-      // Boutons statut
-      [['ready','Prête'],['done','Terminée'],['canceled','Annuler']].forEach(([st,label])=>{
-        const b = document.createElement('button'); b.className='btn small'; b.textContent=label;
-        b.onclick = ()=> updateStatus(o.id, st);
-        act.appendChild(b);
-      });
-
-      // Supprimer
-      const del = document.createElement('button'); del.className='btn small red'; del.textContent='Supprimer';
-      del.onclick = ()=> deleteOrder(o.id);
-      act.appendChild(del);
-
-      tb.appendChild(tr);
-    }
-  }
-
-  /* ---- API calls ---- */
-  async function refreshNow(){
-    if(!apiURL) return;
-    document.getElementById('net').textContent='Chargement…';
-    try{
-      // ping (facultatif mais utile pour détecter les erreurs d’URL)
-      await getJSON(apiURL+'?ping=1&ts='+Date.now());
-
-      const data = await getJSON(apiURL+'?list=1&ts='+Date.now());
-      const orders = Array.isArray(data.orders)?data.orders : data.data || [];
-      renderList(orders);
-
-      // Son sur nouvelles commandes
-      const newOnes = orders.filter(o=>!lastIds.has(o.id));
-      if(newOnes.length && document.getElementById('snd').dataset.on==='1'){
-        if (!bellReady) prepareBell();
-        try{ bell && bell.play().catch(()=>{}); }catch{}
-      }
-      lastIds = new Set(orders.map(o=>o.id));
-
-      document.getElementById('net').textContent = new Date().toLocaleTimeString('fr-FR')+' — OK';
-    }catch(err){
-      document.getElementById('net').textContent='Erreur réseau';
-      showErr(String(err));
-    }
-  }
-
-  async function updateStatus(id, status){
-    if(!apiURL || !id) return;
-    try{
-      await getJSON(apiURL, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body: JSON.stringify({action:'status', id, status, adminKey})
-      });
-      refreshNow();
-    }catch(err){ showErr('Mise à jour statut: '+String(err)); }
-  }
-
-  async function deleteOrder(id){
-    if(!apiURL || !id) return;
-    if(!confirm('Supprimer cette commande ?')) return;
-    try{
-      await getJSON(apiURL, {
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body: JSON.stringify({action:'delete', id, adminKey})
-      });
-      refreshNow();
-    }catch(err){ showErr('Suppression impossible: '+String(err)); }
-  }
-
-  /* ---- Init ---- */
-  function init(){
-    // restaurer préférences
-    const pref = store.read();
-    apiURL   = pref.api || '';
-    adminKey = pref.adm || '';
-    document.getElementById('api').value = apiURL;
-    document.getElementById('adm').value = adminKey;
-    document.getElementById('vol').value = pref.vol ?? 0.7;
-    if (pref.snd){ document.getElementById('snd').dataset.on='1'; document.getElementById('snd').classList.remove('warn'); document.getElementById('snd').textContent='🔔 Son actif'; }
-
-    // listeners
-    document.getElementById('save').onclick = ()=>{
-      apiURL   = document.getElementById('api').value.trim();
-      adminKey = document.getElementById('adm').value.trim();
-      store.write({api:apiURL, adm:adminKey, snd:document.getElementById('snd').dataset.on==='1', vol:Number(document.getElementById('vol').value||'0.7')});
-      document.getElementById('net').textContent='Paramètres enregistrés';
-      refreshNow();
-    };
-    document.getElementById('refresh').onclick = refreshNow;
-
-    document.getElementById('snd').onclick = ()=>{
-      const btn = document.getElementById('snd');
-      const on = btn.dataset.on==='1';
-      if(!on){ prepareBell(); btn.dataset.on='1'; btn.classList.remove('warn'); btn.textContent='🔔 Son actif'; }
-      else   { btn.dataset.on='0'; btn.classList.add('warn'); btn.textContent='🔔 Activer le son'; }
-      store.write({api:apiURL, adm:adminKey, snd:btn.dataset.on==='1', vol:Number(document.getElementById('vol').value||'0.7')});
-    };
-    document.getElementById('vol').oninput = e=>{ if(bell){ bell.volume=Number(e.target.value||'0.7'); } };
-
-    // premier chargement + polling
-    refreshNow();
-    setInterval(refreshNow, 10000); // 10 s
-  }
-
-  window.addEventListener('DOMContentLoaded', init);
+// go!
+init();
 </script>
 </body>
 </html>
