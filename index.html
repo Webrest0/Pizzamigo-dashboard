@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
   :root{
     --bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6;
-    --green:#1fcf7c; --red:#e55252; --accent:#ffb54c;
+    --green:#1fcf7c; --red:#e55252; --white:#fff; --accent:#ffb54c;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
@@ -18,26 +18,30 @@
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   input[type="text"]{width:100%;max-width:680px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
   .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+  .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
-  .ok{color:var(--green)} .err{color:#ff9a9a}
+  .ok{color:var(--green)}
+  .err{color:#ff9a9a}
 
   table{width:100%;border-collapse:separate;border-spacing:0 10px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
   tbody td{background:#0f1623;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}
   tbody td:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody td:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .actions .btn{padding:6px 10px}
 
-  @media (max-width:720px){
+  @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
     tbody tr{margin:12px 0}
     tbody td{border:1px solid var(--line);border-radius:12px;margin:6px 0;padding:10px 12px}
     tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:2px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
   }
-
-  .sound-toggle{margin-left:auto;display:flex;align-items:center;gap:8px}
-  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623;cursor:pointer}
-  .xbtn{border:1px solid #8b3941;color:#ffb4b4;background:#23141a;border-radius:999px;padding:6px 10px;cursor:pointer}
+  .sound{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623}
+  .vol{width:160px}
 </style>
 </head>
 <body>
@@ -46,15 +50,14 @@
 
   <div class="panel">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API"
-             value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
+      <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
-      <div class="sound-toggle">
-        <span class="muted">Volume :</span>
-        <input id="vol" type="range" min="0" max="1" step="0.01" value="0.9">
-        <button id="enable-audio" class="pill">🔔 Activer</button>
-        <button id="test-audio" class="pill">▶️ Test son</button>
+      <div class="sound">
+        <button id="audio-enable" class="pill">🔔 Activer le son</button>
+        <button id="audio-test" class="btn">Test son</button>
+        <label class="muted">Volume :</label>
+        <input id="vol" class="vol" type="range" min="0" max="1" step="0.01">
       </div>
     </div>
     <div id="status" class="muted" style="margin-top:8px">—</div>
@@ -64,14 +67,14 @@
     <table>
       <thead>
         <tr>
-          <th>ID</th>
+          <th style="width:70px">ID</th>
           <th>Client</th>
           <th>Téléphone</th>
-          <th>HDC</th>
-          <th>Horaire</th>
+          <th style="width:70px">HDC</th>
+          <th style="width:90px">Horaire</th>
           <th>Pizzas</th>
-          <th>Total</th>
-          <th>Action</th>
+          <th style="width:90px">Total</th>
+          <th style="width:80px">Action</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -84,183 +87,158 @@
   </div>
 </div>
 
-<!-- cloche -->
+<!-- Son: cloche courte, source fiable -->
 <audio id="bell" preload="auto" crossorigin="anonymous">
   <source src="https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.mp3" type="audio/mpeg">
+  <source src="https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.ogg" type="audio/ogg">
 </audio>
 
 <script>
-/* ===== Anti page blanche ===== */
+/* ====== Anti page blanche ====== */
 function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error?.stack||'')));
-window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason?.message||e.reason)));
+window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
+window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ===== State ===== */
-const elApi   = document.getElementById('api');
-const elRows  = document.getElementById('rows');
-const elStatus= document.getElementById('status');
-const bellEl  = document.getElementById('bell');
-const volEl   = document.getElementById('vol');
-const btnEnable = document.getElementById('enable-audio');
-const btnTest   = document.getElementById('test-audio');
+/* ====== Elements & state ====== */
+const elApi = document.getElementById('api');
+const elRows = document.getElementById('rows');
+const elStatus = document.getElementById('status');
+const elBell = document.getElementById('bell');
+const elVol = document.getElementById('vol');
+const btnEnable = document.getElementById('audio-enable');
+const btnTest = document.getElementById('audio-test');
 
-let seenIds = new Set();
+let ENABLED = false;
+let KNOWN = new Map();      // id -> order (dernière version affichée)
+let HDC_MAP = new Map();    // id -> ms (heure d’envoi figée)
 
-/* ===== HDC persistant (par ID) ===== */
-const HDC_KEY = 'pizzamigo_hdc_by_id';
-function loadHDC(){ try{return JSON.parse(localStorage.getItem(HDC_KEY)||'{}');}catch{return{};} }
-function saveHDC(map){ localStorage.setItem(HDC_KEY, JSON.stringify(map)); }
-let HDC_BY_ID = loadHDC();
+/* ====== Helpers ====== */
+const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
+const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="ok">' + (t||'OK') + '</span>';
+const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="err">' + (t||'Erreur') + '</span>';
 
-/* ===== Helpers ===== */
-const euro=v=>(Number(v)||0).toFixed(2).replace('.',',')+' €';
-function ok(m){elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="ok">'+(m||'OK')+'</span>';}
-function err(m){elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="err">'+(m||'Erreur')+'</span>';}
-function api(){return (elApi.value||'').trim();}
-function HHMM(d){const h=String(d.getHours()).padStart(2,'0');const m=String(d.getMinutes()).padStart(2,'0');return `${h}:${m}`;}
-function toDate(v){ if(!v) return null; if(typeof v==='number') return new Date(v>1e12?v:v*1000); const d=new Date(v); return isNaN(d)?null:d; }
-function pickTimestamp(o){ return o.created ?? o.date ?? o.when ?? o.ts ?? o.time ?? null; }
-function fmtSlot(v){
+function parseBasket(o){
+  let b = o.basket ?? o.items ?? [];
+  if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b=[]; } }
+  return Array.isArray(b) ? b : [];
+}
+function hhmm(d){
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return `${h}:${m}`;
+}
+function slotShort(v){
   if(!v) return '';
-  if(typeof v==='string'){
-    const s=v.trim();
-    if(/^\d{1,2}:\d{2}$/.test(s)) return s.replace(':','h');
-    if(/^\d{1,2}h\d{2}$/.test(s)) return s;
-  }
-  const d=toDate(v); if(!d) return '';
-  return HHMM(d).replace(':','h');
+  if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
+  const d = new Date(v);
+  return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function createdMs(o){
+  const raw = o.created ?? o.date ?? o.when ?? o.ts ?? o.time ?? o.timestamp;
+  if(raw){ const t = Date.parse(raw); if(!Number.isNaN(t)) return t; }
+  // sinon, mémorise si déjà vu, ou fixe maintenant (une seule fois)
+  if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
+  const now = Date.now(); HDC_MAP.set(o.id, now); return now;
 }
 
-/* ===== Son : déverrouillage + test + fallback ===== */
-let audioUnlocked=false;
+/* ====== Audio ====== */
 function unlockAudio(){
-  if(audioUnlocked) return;
+  if(ENABLED) return;
   try{
-    // Déverrouille les moteurs audio des navigateurs mobiles
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const buff=ctx.createBuffer(1,1,22050);
-    const src=ctx.createBufferSource(); src.buffer=buff; src.connect(ctx.destination); src.start(0);
-    ctx.resume && ctx.resume();
-    audioUnlocked=true;
-  }catch{}
+    elBell.volume = Number(localStorage.getItem('pizz_vol') || '0.9');
+    elVol.value = String(elBell.volume);
+    // petit "touch" muet pour déverrouiller iOS
+    const p = elBell.play();
+    if(p && typeof p.then==='function'){ p.then(()=>{ elBell.pause(); elBell.currentTime=0; }).catch(()=>{}); }
+  }catch(e){}
+  ENABLED = true;
+  btnEnable.style.display='none';
+  localStorage.setItem('pizz_audio','1');
 }
-function playBell(){
-  unlockAudio();
-  bellEl.volume=parseFloat(volEl.value||'0.9');
-  bellEl.currentTime=0;
-  return bellEl.play().catch(()=>{ // fallback WebAudio (ding court)
-    try{
-      const ctx=new (window.AudioContext||window.webkitAudioContext)();
-      const o=ctx.createOscillator(), g=ctx.createGain();
-      o.type='triangle';
-      o.frequency.setValueAtTime(880, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime+0.12);
-      g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(parseFloat(volEl.value||'0.9'), ctx.currentTime+0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.45);
-      o.connect(g).connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime+0.5);
-    }catch{}
-  });
-}
-btnEnable.onclick=()=>{ playBell(); localStorage.setItem('pizzamigo_sound','1'); btnEnable.style.display='none'; };
-btnTest.onclick  =()=>{ playBell(); };
-volEl.oninput    =()=>{ bellEl.volume=parseFloat(volEl.value||'0.9'); };
-if(localStorage.getItem('pizzamigo_sound')==='1'){ setTimeout(()=>btnEnable.onclick(),0); }
+btnEnable.addEventListener('click', unlockAudio);
+btnTest.addEventListener('click', ()=>{ unlockAudio(); try{ elBell.currentTime=0; elBell.volume = Number(elVol.value||'0.9'); elBell.play(); }catch(e){} });
+elVol.addEventListener('input', ()=>{ elBell.volume = Number(elVol.value||'0.9'); localStorage.setItem('pizz_vol', String(elBell.volume)); });
+if(localStorage.getItem('pizz_audio')==='1'){ setTimeout(unlockAudio,0); }
 
-/* ===== Pizzas: lecture tolérante ===== */
-function parseMaybeJSON(x){
-  if(!x) return null;
-  if(Array.isArray(x)) return x;
-  if(typeof x==='string'){
-    try{ const j=JSON.parse(x); return j; }catch{return x;}
-  }
-  return x;
-}
-function pizzasFromOrder(o){
-  let src = parseMaybeJSON(o.items) ?? parseMaybeJSON(o.basket) ?? parseMaybeJSON(o.pizzas);
-  if(typeof src === 'string') return src;
-  if(!Array.isArray(src)) return '';
-  return src.map(it=>{
-    const name = it.name || it.item || '';
-    const qty  = it.qty || it.q || 1;
-    const supP = it.supplPrice || it.suppl || 0;
-    const supT = it.supplType || (supP? 'suppl.' : '');
-    const sup  = supP ? ` (+${supP}€ ${supT})` : '';
-    return `${name} × ${qty}${sup}`;
-  }).join('<br>');
-}
-
-/* ===== Rendu ===== */
+/* ====== Render ====== */
 function render(list){
-  // Tri décroissant (récent en haut)
-  const sorted=[...list].sort((a,b)=>{
-    const da=toDate(pickTimestamp(a))||new Date(0);
-    const db=toDate(pickTimestamp(b))||new Date(0);
-    return db-da;
-  });
+  // trie par date de création décroissante (les nouvelles en haut)
+  list.sort((a,b)=> createdMs(b)-createdMs(a));
 
-  const total=sorted.length;
-  elRows.innerHTML='';
-  let newCount=0;
+  const prevIds = new Set(KNOWN.keys());
+  elRows.innerHTML = '';
 
-  sorted.forEach((o,idx)=>{
-    const idVisu=total-idx;                        // 5,4,3,2,1…
-    const idRaw = o.id || o.ID || o.Id || String(idVisu);
+  list.forEach(o=>{
+    const id = o.id || o.ID || o.code; if(!id) return;
+    KNOWN.set(id, o);
 
-    // HDC: priorité API, sinon première apparition (persistée)
-    let when = pickTimestamp(o);
-    let dHdc = toDate(when);
-    if(!dHdc){
-      const saved = HDC_BY_ID[idRaw];
-      if(saved){ dHdc = new Date(saved); }
-      else { dHdc = new Date(); HDC_BY_ID[idRaw]=dHdc.toISOString(); saveHDC(HDC_BY_ID); }
-    }
-    const hdc  = HHMM(dHdc);
+    // fige HDC si pas déjà mémorisé
+    const ms = createdMs(o); HDC_MAP.set(id, ms);
 
-    const td=(label,html)=>{const c=document.createElement('td');c.setAttribute('data-label',label);c.innerHTML=html;return c;};
-    const tr=document.createElement('tr');
+    const tr = document.createElement('tr');
+    const td = (label, html) => { const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c; };
 
-    tr.appendChild(td('ID', idVisu));
-    tr.appendChild(td('Client', o.name||o.client||''));
-    tr.appendChild(td('Téléphone', o.phone||''));
-    tr.appendChild(td('HDC', hdc));
-    tr.appendChild(td('Horaire', fmtSlot(o.slot||o.horaire||'')));
-    tr.appendChild(td('Pizzas', pizzasFromOrder(o)));
-    tr.appendChild(td('Total', euro(o.total||0)));
+    tr.appendChild(td('ID', id));
+    tr.appendChild(td('Client', o.name||o.client||'' ));
+    tr.appendChild(td('Téléphone', o.phone||'' ));
+    tr.appendChild(td('HDC', hhmm(new Date(ms)) ));
+    tr.appendChild(td('Horaire', slotShort(o.slot||o.horaire||'')));
 
-    const act=document.createElement('td'); act.setAttribute('data-label','Action');
-    const x=document.createElement('button'); x.className='xbtn'; x.textContent='✖'; x.title='Retirer';
-    x.onclick=()=>tr.remove();
+    const pizzas = parseBasket(o).map(it=>{
+      const supVal = (it.supplPrice ?? it.suppl ?? 0);
+      const sup = supVal ? ` (+${supVal}€ ${it.supplType||'suppl.'})` : '';
+      return `${it.name||''} × ${it.qty||1}${sup}`;
+    }).join('<br>');
+    tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
+
+    tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
+
+    const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
+    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer de la vue';
+    x.onclick = ()=>{ tr.remove(); KNOWN.delete(id); };
     act.appendChild(x);
     tr.appendChild(act);
 
     elRows.appendChild(tr);
-
-    if(!seenIds.has(idRaw)){ newCount++; seenIds.add(idRaw); }
   });
 
-  if(newCount>0 && localStorage.getItem('pizzamigo_sound')==='1'){ playBell(); }
+  // son si au moins une nouvelle ID
+  const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
+  if(newOnes.length>0){ try{ elBell.currentTime=0; elBell.play(); }catch(e){} }
 }
 
-/* ===== Fetch ===== */
-async function getList(){
+/* ====== API ====== */
+async function fetchOrders(){
+  const url = (elApi.value||'').trim();
+  if(!url){ err('Renseigne l’URL de l’API'); return []; }
+  const r = await fetch(url+'?list=1', {cache:'no-store'});
+  const data = await r.json();
+  if(data && data.ok===false) throw new Error(data.error||'Réponse invalide');
+  const arr = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
+  return arr;
+}
+async function refresh(){
   try{
-    const r=await fetch(api()+'?list=1',{cache:'no-store'});
-    const data=await r.json();
-    render(data.orders || data.data || []);
+    const list = await fetchOrders();
+    render(list);
     ok('OK');
   }catch(e){ console.error(e); err('Erreur réseau'); }
 }
 
-/* ===== Hooks & init ===== */
-document.getElementById('save').onclick=()=>{localStorage.setItem('pizzamigo_api', elApi.value.trim()); ok('Paramètres enregistrés');};
-document.getElementById('refresh').onclick=getList;
+/* ====== Hooks & init ====== */
+document.getElementById('save').onclick = ()=>{
+  localStorage.setItem('pizz_api', elApi.value.trim());
+  localStorage.setItem('pizz_vol', String(elVol.value||'0.9'));
+  ok('Paramètres enregistrés');
+};
+document.getElementById('refresh').onclick = refresh;
 
 (function boot(){
-  const saved=localStorage.getItem('pizzamigo_api'); if(saved) elApi.value=saved;
-  bellEl.volume=parseFloat(volEl.value||'0.9');
-  getList(); setInterval(getList, 10000);
+  elApi.value = localStorage.getItem('pizz_api') || elApi.value;
+  elVol.value = localStorage.getItem('pizz_vol') || '0.9';
+  elBell.volume = Number(elVol.value||'0.9');
+  refresh();
+  setInterval(refresh, 10000);
 })();
 </script>
 </body>
