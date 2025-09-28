@@ -24,7 +24,6 @@
   .price{white-space:nowrap}
   .actions .btn{padding:6px 10px}
   @media (max-width:740px){ .hide-sm{display:none} table{font-size:14px} .actions .btn{padding:6px 8px} }
-  /* panneau erreur */
   #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:9999}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
 </style>
@@ -74,36 +73,40 @@
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
-/* ===== anti page blanche ===== */
+/* ==== anti page blanche ==== */
 function showErr(msg){var b=document.getElementById('err');b.style.display='block';document.getElementById('err-msg').textContent=msg;}
-window.addEventListener('error', function(e){showErr(e.message + "\n" + (e.error&&e.error.stack||""));});
-window.addEventListener('unhandledrejection', function(e){showErr('Promise rejetee: ' + (e.reason&&e.reason.message||e.reason));});
+window.addEventListener('error',function(e){showErr(e.message+"\n"+(e.error&&e.error.stack||""));});
+window.addEventListener('unhandledrejection',function(e){showErr('Promise rejetee: '+(e.reason&&e.reason.message||e.reason));});
 
-/* ===== etat ===== */
-var S = {
-  api: localStorage.getItem('pizz_api') || '',
-  adm: localStorage.getItem('pizz_adm') || 'PIZZAMIGO-ADMIN-123',
-  orders: new Map(),
-  ctx:null, audioReady:false, timer:null
-};
-document.getElementById('api').value = S.api;
-document.getElementById('adm').value = S.adm;
+/* ==== etat ==== */
+var S={api:localStorage.getItem('pizz_api')||'',adm:localStorage.getItem('pizz_adm')||'PIZZAMIGO-ADMIN-123',orders:new Map(),ctx:null,audioReady:false,timer:null};
+document.getElementById('api').value=S.api;
+document.getElementById('adm').value=S.adm;
 
-/* ===== helpers ===== */
-function euro(v){return Number(v||0).toFixed(2).replace('.', ',') + ' €';}
-function hhmm(t){
-  if(/^\d{2}:\d{2}$/.test(t||'')) return t;
-  var d = new Date(t||Date.now());
-  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+/* ==== helpers ==== */
+function euro(v){return Number(v||0).toFixed(2).replace('.',',')+' €';}
+function hhmm(t){ if(/^\d{2}:\d{2}$/.test(t||'')) return t; var d=new Date(t||Date.now()); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function parseItems(v){
+  try{
+    if(Array.isArray(v)) return v;
+    if(typeof v==='string'&&v.trim()){
+      var j=JSON.parse(v);
+      if(Array.isArray(j)) return j;
+      if(j&&Array.isArray(j.items)) return j.items;
+    }
+    if(v&&typeof v==='object'&&Array.isArray(v.items)) return v.items;
+  }catch(e){}
+  return [];
 }
 function itemsText(o){
-  var arr = (o.items||o.basket||[]);
+  var arr=parseItems(o.items||o.basket||o.panier||[]);
   return arr.map(function(it){
-    var sup = it.supplType ? ' (+1€ ' + it.supplType + ')' : '';
-    return (it.name||'') + ' × ' + (it.qty||1) + sup;
+    var sup = (it.supplType||it.suppl||'') ? ' (+1€ '+(it.supplType||it.suppl)+')' : '';
+    return (it.name||it.n||'')+' × '+(it.qty||it.q||1)+sup;
   }).join('<br>');
 }
 function rowHtml(o){
+  var total = o.total!=null ? o.total : (o.total11!=null?o.total11:0);
   return '<tr data-id="'+(o.id||'')+'">'+
     '<td>'+(o.time||o.when||'')+'</td>'+
     '<td class="hide-sm">'+(o.id||'')+'</td>'+
@@ -111,7 +114,7 @@ function rowHtml(o){
     '<td class="hide-sm">'+(o.phone||'')+'</td>'+
     '<td>'+hhmm(o.slot||o.horaire||o.when||'')+'</td>'+
     '<td>'+(itemsText(o)||'-')+'</td>'+
-    '<td class="price">'+euro(o.total||o.total11||0)+'</td>'+
+    '<td class="price">'+euro(total)+'</td>'+
     '<td><span class="tag">'+(o.status||'new')+'</span></td>'+
     '<td class="actions">'+
       '<button class="btn" onclick="setStatus(\''+(o.id||'')+'\',\'ready\')">Prete</button> '+
@@ -122,8 +125,9 @@ function rowHtml(o){
   '</tr>';
 }
 function upsert(list){
-  var body=document.getElementById('rows'); var added=0;
-  (list||[]).forEach(function(o){
+  var body=document.getElementById('rows'), added=0;
+  (Array.isArray(list)?list:[]).forEach(function(o){
+    if(!o||!o.id) return;
     if(!S.orders.has(o.id)){
       S.orders.set(o.id,o);
       body.insertAdjacentHTML('afterbegin',rowHtml(o));
@@ -140,91 +144,3 @@ function ring(){
   g.gain.exponentialRampToValueAtTime(Math.max(0.02,+document.getElementById('vol').value), S.ctx.currentTime+0.02);
   g.gain.exponentialRampToValueAtTime(0.0001, S.ctx.currentTime+0.35);
   o.connect(g); g.connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+0.35);
-}
-
-/* ===== API ===== */
-function apiUrl(){
-  var v=(document.getElementById('api').value||S.api||'').trim();
-  if(!v) throw new Error('URL API manquante');
-  return v;
-}
-async function apiGet(params){
-  var u = new URL(apiUrl());
-  Object.keys(params||{}).forEach(function(k){u.searchParams.set(k, params[k]);});
-  var r = await fetch(u,{method:'GET',cache:'no-store'});
-  var t = await r.text(); try{return JSON.parse(t);}catch(e){throw new Error(t);}
-}
-async function apiPost(obj){
-  var r = await fetch(apiUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)});
-  var t = await r.text(); try{return JSON.parse(t);}catch(e){throw new Error(t);}
-}
-
-/* ===== actions (exposees sur window) ===== */
-window.onSave = function(){
-  S.api=(document.getElementById('api').value||'').trim();
-  S.adm=(document.getElementById('adm').value||'').trim()||'PIZZAMIGO-ADMIN-123';
-  localStorage.setItem('pizz_api',S.api);
-  localStorage.setItem('pizz_adm',S.adm);
-  document.getElementById('status').textContent='Parametres enregistres';
-};
-window.refreshNow = async function(){
-  try{
-    var d = await apiGet({list:'today'});
-    if(!d.ok) throw new Error(d.error||'Reponse invalide');
-    upsert(d.orders||[]);
-    document.getElementById('status').textContent=new Date().toTimeString().slice(0,8)+' — OK';
-  }catch(e){ document.getElementById('status').textContent='Erreur reseau'; showErr(String(e)); }
-};
-window.sendDemo = async function(){
-  try{
-    var res = await apiPost({
-      adminKey:(document.getElementById('adm').value||S.adm||'').trim(),
-      demo:true,
-      name:'Test JSONP',
-      phone:'600000000',
-      slot:'19:30',
-      items:[{name:'Margharita',qty:1,price:8.50,supplType:'viande',supplPrice:1}],
-      total:8.50,
-      source:'site'
-    });
-    if(!res.ok) throw new Error(res.error||'Echec envoi demo');
-    await window.refreshNow();
-  }catch(e){ alert('Echec denvoi de la demo.'); showErr(String(e)); }
-};
-window.removeRow = function(id){
-  S.orders.delete(id);
-  var tr=document.querySelector('tr[data-id="'+CSS.escape(id)+'"]'); if(tr) tr.remove();
-};
-window.setStatus = function(id,st){
-  apiPost({adminKey:(document.getElementById('adm').value||S.adm||'').trim(), setStatus:true, id:id, status:st})
-    .then(function(r){
-      if(!r.ok) throw new Error(r.error||'setStatus');
-      var tr=document.querySelector('tr[data-id="'+CSS.escape(id)+'"]');
-      if(tr){ var tag=tr.querySelector('.tag'); if(tag) tag.textContent=st; }
-    })
-    .catch(function(err){ showErr(String(err)); });
-};
-window.enableSound = function(){
-  try{
-    if(!S.ctx){ S.ctx=new (window.AudioContext||window.webkitAudioContext)(); }
-    S.ctx.resume().then(function(){ S.audioReady=true; var b=document.getElementById('soundBtn'); b.disabled=true; b.textContent='Son active'; });
-  }catch(e){ showErr(String(e)); }
-};
-
-/* ===== lier les boutons ===== */
-document.getElementById('save').addEventListener('click', window.onSave);
-document.getElementById('refresh').addEventListener('click', window.refreshNow);
-document.getElementById('demo').addEventListener('click', window.sendDemo);
-document.getElementById('soundBtn').addEventListener('click', window.enableSound);
-
-/* ===== boot ===== */
-(function(){
-  if(!S.api){
-    document.getElementById('api').value='https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec';
-  }
-  window.refreshNow();
-  S.timer=setInterval(window.refreshNow, 5000);
-})();
-</script>
-</body>
-</html>
