@@ -9,31 +9,40 @@
     --bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;
     --green:#1fcf7c;--red:#e55252;--white:#ffffff;--accent:#ffb54c;
   }
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
   .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
+
   h1{margin:0 0 12px;font-size:32px;letter-spacing:.4px}
+
   .bar{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
-  .bar .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .inp, .btn, .pill{border-radius:12px;border:1px solid var(--line);background:#0e1420;color:#fff}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .inp,.btn,.pill{border-radius:12px;border:1px solid var(--line);background:#0e1420;color:#fff}
   .inp{padding:10px 12px;min-width:260px;flex:1}
   .btn{padding:8px 12px;background:#162033;border-color:#2a3655;cursor:pointer}
   .btn.primary{background:var(--green);color:#001b10;border-color:transparent}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
-  .t{width:100%;border-collapse:collapse;margin-top:12px}
-  .t th,.t td{border-bottom:1px solid rgba(255,255,255,.08);padding:10px 8px;vertical-align:top}
-  .t th{color:#cdd7ef;text-align:left;font-weight:700}
+
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{border-bottom:1px solid rgba(255,255,255,.08);padding:10px 8px;vertical-align:top;text-align:left}
+  th{color:#cdd7ef}
   .status{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 8px;min-width:54px;text-align:center}
   .status[data-s="new"]{background:#18202e}
   .status[data-s="ready"]{background:#13281f;border-color:#1f824e}
   .status[data-s="done"]{background:#1f1f33;border-color:#5050b5}
   .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+
   #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
   #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
+
   @media (max-width:720px){
     .wrap{padding:0 8px}
     .inp{min-width:200px}
-    .t th:nth-child(2), .t td:nth-child(2){display:none} /* cache l'ID sur mobile */
+    /* allègement mobile */
+    th:nth-child(2),td:nth-child(2){display:none}      /* ID */
+    th:nth-child(4),td:nth-child(4){display:none}      /* Téléphone */
+    th:nth-child(7),td:nth-child(7){display:none}      /* Total */
   }
 </style>
 </head>
@@ -52,16 +61,16 @@
       <span id="net" class="muted" style="margin-left:auto">—</span>
     </div>
     <div class="row" style="margin-top:8px">
-      <label class="pill" style="display:flex;align-items:center;gap:8px">
+      <label class="pill" style="display:flex;align-items:center;gap:8px;padding:8px 10px;">
         <span>🔔 Activer le son</span>
         <input id="snd" type="checkbox" style="accent-color:#1fcf7c">
       </label>
       <span>Son :</span>
-      <input id="vol" type="range" min="0" max="1" step="0.01" style="flex:1">
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="0.85" style="flex:1">
     </div>
   </div>
 
-  <table class="t" id="tab">
+  <table>
     <thead>
       <tr>
         <th>Heure</th>
@@ -79,76 +88,185 @@
   </table>
 </div>
 
+<!-- Panneau erreurs (anti page blanche) -->
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
+/* ===== util ===== */
 function showErr(e){
   const box=document.getElementById('err');
-  const msg=(e && e.message)||String(e);
+  const msg=(e && (e.message||e.statusText)) || String(e);
   box.style.display='block';
   document.getElementById('err-msg').textContent=msg;
 }
+window.addEventListener('error', e=>showErr(e.error||e.message||e));
+window.addEventListener('unhandledrejection', e=>showErr(e.reason||e));
 
-const S = {
-  list: [], lastIds: new Set(), bell:null, pollMs: 12_000
+const S = { list:[], known:new Set(), bell:null, pollMs:12000 };
+const euro = v => (Number(v)||0).toFixed(2).replace('.',',')+' €';
+const hhmm = v => {
+  if (typeof v==='string' && /^\d{1,2}:\d{2}$/.test(v)) return v;
+  const d = new Date(v); return isNaN(+d) ? '' : d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 };
 const store = {
-  k:'PZ_DASH_V4',
+  k:'PZ_DASH_PREFS',
   read(){ try{return JSON.parse(localStorage.getItem(this.k)||'{}')}catch{return{}} },
-  write(o){ localStorage.setItem(this.k, JSON.stringify(o)) }
+  write(o){ localStorage.setItem(this.k, JSON.stringify(o)); }
 };
-const apiURL=()=>document.getElementById('api').value.trim();
-const adminKey=()=>document.getElementById('adm').value.trim();
-const euro=v=>(Number(v)||0).toFixed(2).replace('.',',')+' €';
-const hhmm=s=>/^\d{1,2}:\d{2}$/.test(s)?s:new Date(s).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-async function getJSON(q){const r=await fetch(apiURL()+(q||'')+'&_='+Date.now());return r.json();}
-async function postJSON(obj){const r=await fetch(apiURL(),{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(obj)});return r.json();}
+const apiURL  = ()=> document.getElementById('api').value.trim();
+const adminKey= ()=> document.getElementById('adm').value.trim();
 
+/* Ajoute proprement un query ?x=y ou &x=y */
+function withQuery(u,q){ return u + (u.includes('?')?'&':'?') + q; }
+
+/* GET liste jour */
+async function apiList(){
+  const url = withQuery(apiURL(), 'list=1');
+  const res = await fetch(url, {cache:'no-store'});
+  const txt = await res.text();
+  try{ return JSON.parse(txt); }catch{ throw new Error('Réponse non JSON: '+txt.slice(0,120)); }
+}
+
+/* POST action */
+async function apiPost(payload){
+  const res = await fetch(apiURL(), {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(payload)
+  });
+  const txt = await res.text();
+  try{ return JSON.parse(txt); }catch{ throw new Error('Réponse non JSON: '+txt.slice(0,120)); }
+}
+
+/* ===== rendu ===== */
 function render(){
-  const tb=document.getElementById('rows');tb.innerHTML='';
+  const tb = document.getElementById('rows');
+  tb.innerHTML = '';
   for(const o of S.list){
-    const tr=document.createElement('tr');
-    const pizzas=(o.basket||o.items||[]).map(it=>`${it.name} × ${it.qty||1}`).join('<br>');
-    tr.innerHTML=`
+    const tr = document.createElement('tr');
+
+    const items = (o.basket||o.items||[]).map(it=>{
+      const s = it.supplType ? ` (+1€ ${it.supplType})` : '';
+      return `${it.name} × ${it.qty||1}${s}`;
+    }).join('<br>');
+
+    tr.innerHTML = `
       <td>${o.when||''}</td>
       <td>${o.id||''}</td>
       <td>${o.name||''}</td>
       <td>${o.phone||''}</td>
       <td>${hhmm(o.slot||'')}</td>
-      <td>${pizzas}</td>
+      <td>${items}</td>
       <td>${euro(o.total)}</td>
       <td><span class="status" data-s="${o.status||'new'}">${o.status||'new'}</span></td>
-      <td class="row-actions"></td>`;
-    const act=tr.querySelector('.row-actions');
-    [['ready','Prête'],['done','Terminée'],['canceled','Annuler']].forEach(([s,l])=>{
-      const b=document.createElement('button');b.className='btn';b.textContent=l;
-      b.onclick=()=>updateStatus(o.id,s);act.appendChild(b);
+      <td class="row-actions"></td>
+    `;
+
+    const act = tr.querySelector('.row-actions');
+    [
+      ['ready','Prête'],
+      ['done','Terminée'],
+      ['canceled','Annuler']
+    ].forEach(([status,label])=>{
+      const b=document.createElement('button');
+      b.className='btn';
+      b.textContent=label;
+      b.onclick=()=>updateStatus(o.id,status);
+      act.appendChild(b);
     });
-    const del=document.createElement('button');del.className='btn red';del.textContent='Supprimer';
-    del.onclick=()=>deleteOrder(o.id);act.appendChild(del);
+
+    const del=document.createElement('button');
+    del.className='btn red';
+    del.textContent='Supprimer';
+    del.onclick=()=>deleteOrder(o.id);
+    act.appendChild(del);
+
     tb.appendChild(tr);
   }
 }
+
+/* ===== actions ===== */
 async function refreshNow(){
   try{
     document.getElementById('net').textContent='Chargement…';
-    const d=await getJSON('?list=1');
-    S.list=d.orders||[];
+    const data = await apiList();
+    const orders = data.orders||[];
+
+    // détection des nouvelles commandes (son)
+    const incoming = [];
+    for(const o of orders){
+      if(!S.known.has(o.id)){ incoming.push(o.id); S.known.add(o.id); }
+    }
+    if(incoming.length && document.getElementById('snd').checked) ring();
+
+    S.list = orders;
     render();
-    document.getElementById('net').textContent=new Date().toLocaleTimeString('fr-FR')+' — OK';
-  }catch(e){showErr(e);document.getElementById('net').textContent='Erreur';}
+    document.getElementById('net').textContent =
+      new Date().toLocaleTimeString('fr-FR')+' — OK';
+  }catch(err){
+    showErr(err);
+    document.getElementById('net').textContent='Erreur réseau';
+  }
 }
-async function updateStatus(id,status){await postJSON({action:'status',id,status,adminKey:adminKey()});refreshNow();}
-async function deleteOrder(id){if(!confirm("Supprimer cette commande ?"))return;await postJSON({action:'delete',id,adminKey:adminKey()});refreshNow();}
-function ring(){if(!S.bell){S.bell=new Audio('https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.mp3');}S.bell.volume=+document.getElementById('vol').value;S.bell.play().catch(()=>{});}
+
+async function updateStatus(id,status){
+  try{
+    await apiPost({action:'status', id, status, adminKey:adminKey()});
+    refreshNow();
+  }catch(err){ showErr(err); alert("Échec de mise à jour du statut."); }
+}
+
+async function deleteOrder(id){
+  if(!confirm("Supprimer cette commande ?")) return;
+  try{
+    await apiPost({action:'delete', id, adminKey:adminKey()});
+    // enlever localement pour feedback instantané
+    S.list = S.list.filter(o=>o.id!==id);
+    render();
+  }catch(err){ showErr(err); alert("Suppression impossible."); }
+}
+
+/* ===== sonnerie ===== */
+function ring(){
+  if(!S.bell){
+    S.bell = new Audio("https://cdn.jsdelivr.net/gh/naptha/tinyfiles@master/chime.mp3"); // cloche courte
+  }
+  S.bell.volume = Number(document.getElementById('vol').value||'0.85');
+  // Sur certains navigateurs il faut une interaction utilisateur préalable
+  S.bell.play().catch(()=>{ /* ignore */ });
+}
+
+/* ===== init ===== */
 function init(){
-  const p=store.read();document.getElementById('api').value=p.api||'';document.getElementById('adm').value=p.adm||'';
-  document.getElementById('snd').checked=!!p.snd;document.getElementById('vol').value=p.vol||0.8;
-  document.getElementById('save').onclick=()=>store.write({api:apiURL(),adm:adminKey(),snd:document.getElementById('snd').checked,vol:document.getElementById('vol').value});
-  document.getElementById('refresh').onclick=refreshNow;
-  setInterval(refreshNow,S.pollMs);refreshNow();
+  const pref = store.read();
+  document.getElementById('api').value = pref.api||'';
+  document.getElementById('adm').value = pref.adm||'';
+  document.getElementById('snd').checked = !!pref.snd;
+  document.getElementById('vol').value = pref.vol ?? 0.85;
+
+  document.getElementById('save').onclick = () => {
+    store.write({
+      api: apiURL(),
+      adm: adminKey(),
+      snd: document.getElementById('snd').checked,
+      vol: document.getElementById('vol').value
+    });
+    document.getElementById('net').textContent = 'Paramètres enregistrés';
+  };
+  document.getElementById('refresh').onclick = refreshNow;
+
+  // Sauvegarde auto des préférences
+  document.getElementById('snd').onchange =
+  document.getElementById('vol').oninput = () => {
+    const p = store.read();
+    store.write({...p, snd:document.getElementById('snd').checked, vol:document.getElementById('vol').value});
+  };
+
+  // Premier chargement + polling
+  refreshNow();
+  setInterval(refreshNow, S.pollMs);
 }
-window.addEventListener('error',e=>showErr(e));init();
+init();
 </script>
 </body>
 </html>
