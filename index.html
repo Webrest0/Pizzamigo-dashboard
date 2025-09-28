@@ -1,79 +1,74 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{
-    --bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;
-    --green:#1fcf7c;--red:#e55252;--white:#ffffff;--accent:#ffb54c;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1080px;margin:22px auto;padding:0 14px}
-  h1{margin:0 0 14px;font-size:36px;line-height:1.1}
-
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px}
-  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  input[type=text]{flex:1 1 380px;min-width:260px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:12px;padding:10px}
-  .btn{border:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
-  .btn.primary{background:var(--green);color:#001b10;border-color:transparent}
-  .btn.red{border-color:#ff9a9a;color:#ffc9c9}
-  .btn.small{padding:6px 10px;font-size:.95rem}
-  .tag{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.25);padding:8px 12px;border-radius:999px}
-  .tag.warn{border-color:#ffd591;color:#ffd591;background:rgba(255,181,76,.06)}
+  :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1040px;margin:18px auto;padding:0 14px}
+  h1{margin:0 0 14px;font-size:32px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input,button{border-radius:10px;border:1px solid var(--line);background:#0e1420;color:#fff}
+  input{padding:10px 12px;min-width:240px}
+  button{padding:8px 12px;cursor:pointer}
+  .btn{background:#0f1622}
+  .btn.primary{background:var(--green);border-color:transparent;color:#001a12}
+  .btn.red{color:#ffd0d0;border-color:#ff8b8b}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#0e1420}
   .muted{color:var(--muted)}
-  .right{margin-left:auto}
-  .vol{display:flex;align-items:center;gap:10px}
-
-  table{width:100%;border-collapse:collapse;margin-top:12px}
-  th,td{border-bottom:1px solid rgba(255,255,255,.07);padding:12px 10px;vertical-align:top}
-  th{font-weight:700;text-align:left;color:#cfe0ff}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
-  .status{padding:4px 8px;border:1px solid var(--line);border-radius:999px}
-  .status.new{color:#e0e8ff;border-color:#6171a0}
-  .status.ready{color:#ffe6b3;border-color:#a0834a}
-  .status.done{color:#b2ffd9;border-color:#1fcf7c}
-  .status.canceled{color:#ffc1c1;border-color:#e55252}
-
-  /* mobile */
-  @media (max-width:720px){
+  .ok{color:#a7ffcf}.err{color:#ff9d9d}
+  .sound{display:flex;align-items:center;gap:10px}
+  .sound input[type="checkbox"]{width:18px;height:18px}
+  .time{white-space:nowrap}
+  /* table */
+  .tbl-wrap{overflow:auto; -webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:separate;border-spacing:0 10px;min-width:720px}
+  th,td{padding:10px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  th{color:#dfe6fb;text-align:left}
+  tr{background:#0f1622;border-radius:12px}
+  td:first-child,th:first-child{border-left:1px solid var(--line);border-top-left-radius:12px;border-bottom-left-radius:12px}
+  td:last-child,th:last-child{border-right:1px solid var(--line);border-top-right-radius:12px;border-bottom-right-radius:12px}
+  .actions{display:flex;gap:6px;flex-wrap:wrap}
+  .badge{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+  .status-new{border-color:#6e7eea;color:#b9c3ff}
+  .status-ready{border-color:#ffcd5d;color:#ffe2a1}
+  .status-done{border-color:#6be2ab;color:#c7ffe7}
+  .status-canceled{border-color:#ff8b8b;color:#ffd2d2}
+  @media (max-width:700px){
     h1{font-size:28px}
-    .row input[type=text]{flex:1 1 100%}
-    th:nth-child(2), td:nth-child(2){display:none;} /* cache ID sur mobile */
-    th:nth-child(5), td:nth-child(5){display:none;} /* cache téléphone sur mobile */
-    th:nth-child(7), td:nth-child(7){display:none;} /* cache total, laissé dans les pizzas */
+    input{min-width:220px;width:100%}
+    .row.stack > *{flex:1 1 auto}
+    .tbl-wrap{margin-top:10px}
+    table{min-width:640px}
   }
-
-  /* panneau erreur */
-  #err{position:fixed;right:8px;bottom:8px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
-  #err pre{white-space:pre-wrap;margin:6px 0 0 0;color:#ffd1d1}
+  /* toast d’erreur discret */
+  #err{position:fixed;right:10px;bottom:10px;max-width:92vw;background:#2a1b1b;border:1px solid #5d2f2f;border-radius:10px;padding:10px 12px;display:none;z-index:999}
+  #err pre{white-space:pre-wrap;margin:6px 0 0;color:#ffd1d1}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Dashboard — PIZZ’AMIGO</h1>
 
-  <div class="panel">
-    <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API (Apps Script)">
-      <input id="adm" type="text" placeholder="Clé admin (facultatif)" style="max-width:260px">
-      <button id="save" class="btn">Enregistrer</button>
-      <button id="refresh" class="btn">Actualiser</button>
-
-      <span class="right muted" id="net">—</span>
+  <div class="card">
+    <div class="row stack">
+      <input id="api" placeholder="URL de l’API (Google Apps Script)">
+      <input id="adm" placeholder="PIZZAMIGO-ADMIN-123 (facultatif)">
+      <button class="btn" id="save">Enregistrer</button>
+      <button class="btn" id="reload">Actualiser</button>
+      <span class="muted" id="net">—</span>
     </div>
     <div class="row" style="margin-top:10px">
-      <label class="tag warn"><span>🔔</span> <input id="snd" type="checkbox" style="margin-right:6px"> Activer le son</label>
-      <div class="vol">Son :
-        <input id="vol" type="range" min="0" max="1" step=".01" value=".8" style="width:220px">
-      </div>
+      <label class="sound pill">🔔 <input id="snd" type="checkbox" style="margin-left:6px"><span>Activer le son</span></label>
+      <div class="row"><span>Son :</span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.8" style="width:220px"></div>
     </div>
   </div>
 
-  <div class="panel" style="margin-top:14px">
-    <table>
+  <div class="tbl-wrap">
+    <table id="tbl">
       <thead>
         <tr>
           <th>Heure</th>
@@ -92,188 +87,189 @@
   </div>
 </div>
 
-<!-- Panneau erreur -->
+<!-- panneau erreur -->
 <div id="err"><b>Erreur JavaScript</b><pre id="err-msg"></pre></div>
 
 <script>
-/*** utilitaires ***/
+/* ===== util ===== */
 const $ = sel => document.querySelector(sel);
-function showErr(msg,txt){
-  const b = $('#err'); b.style.display='block';
-  $('#err-msg').textContent = (msg||'') + (txt ? ('\\n'+txt) : '');
-  console.error('Dashboard error:', msg, txt||'');
-}
-const euro = n => (Number(n)||0).toFixed(2).replace('.', ',')+' €';
-const hhmm = s => {
-  if(!s) return '—';
+const euro = v => Number(v||0).toFixed(2).replace('.',',');
+const fmtTime = (w,slot) => {
   try{
-    // accepte "19:30", timestamp, ou date iso
-    if(String(s).match(/^\\d{1,2}:\\d{2}$/)) return s;
-    const d = new Date(s);
-    if(!isNaN(d)) return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  }catch(e){}
-  return String(s);
+    const d = w ? new Date(w) : null;
+    if (d && !Number.isNaN(d.getTime())) {
+      return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Paris'});
+    }
+  }catch{}
+  const s=(slot||'').toString().trim();
+  return /^\d{1,2}:\d{2}$/.test(s)?s:s||'—';
 };
+function showErr(msg){ const b=$("#err"); $("#err-msg").textContent=msg; b.style.display='block'; }
 
-/*** état + sonnerie ***/
-const store = {
-  read(){ try{return JSON.parse(localStorage.getItem('pzadm')||'{}')}catch{return{}} },
-  write(o){ localStorage.setItem('pzadm', JSON.stringify(o)); }
+/* ===== état ===== */
+let store = {
+  read(){ try{ return JSON.parse(localStorage.getItem('pzadm')||'{}'); } catch{ return {}; } },
+  write(v){ localStorage.setItem('pzadm', JSON.stringify(v)); }
 };
-let pref = Object.assign({api:'', adminkey:'', snd:false, vol:.8}, store.read());
-let bell, unlocked=false;
+let pref = Object.assign({api:'', adm:'', snd:false, vol:0.85}, store.read());
+let bell=null, bellVol=pref.vol;
+let lastIds = new Set();   // pour éviter les doublons
+let polling=false;
+let aborter=null;
 
-/*** API helpers ***/
-function safeJSON(text){
-  try{ return JSON.parse(text); }catch(e){ return {ok:false, nonjson:true, raw:text}; }
+/* ===== son ===== */
+function initBell(){
+  bell = new Audio("https://cdn.jsdelivr.net/gh/maph42/tinyfiles@master/chime.mp3");
+  bell.volume = bellVol;
+  // arm le son après 1 interaction
+  document.body.addEventListener('click', ()=>{
+    if(!bell) return;
+    bell.play().then(()=>bell.pause()).catch(()=>{});
+  }, {once:true});
 }
-async function apiGetList(){
-  const url = new URL(pref.api);
-  url.searchParams.set('list','1');
-  const r = await fetch(url.toString(), {method:'GET'});
-  const t = await r.text();
-  const data = safeJSON(t);
-  if(!data.ok && !data.orders){
-    throw new Error(data.nonjson ? 'Réponse non JSON' : (data.error||'Réponse invalide'));
-  }
-  return (data.orders||[]);
+function ring(){ if(pref.snd && bell){ bell.currentTime=0; bell.volume=bellVol; bell.play().catch(()=>{}); } }
+
+/* ===== API helpers (text/plain) ===== */
+async function apiGet(url){
+  const u = new URL(url);
+  u.searchParams.set('t', Date.now()); // anti-cache
+  const r = await fetch(u, {method:'GET'});
+  const txt = await r.text();
+  let data; try{ data = JSON.parse(txt); }catch{ data = {ok:false, raw:txt}; }
+  if(!r.ok || data.ok===false) throw new Error(data.error || 'Réponse non JSON: '+txt.slice(0,80));
+  return data;
 }
-async function apiPost(payload){
-  const r = await fetch(pref.api, {
+async function apiPost(url, payload){
+  const r = await fetch(url, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify(payload)
   });
-  const t = await r.text();
-  const data = safeJSON(t);
-  if(!r.ok || data.ok===false){
-    throw new Error((data && (data.error||data.message)) || ('HTTP '+r.status));
-  }
+  const txt = await r.text();
+  let data; try{ data = JSON.parse(txt); }catch{ data={ok:false, raw:txt}; }
+  if(!r.ok || data.ok===false) throw new Error(data.error || 'Payload invalide');
   return data;
 }
 
-/*** rendu ***/
-function normalizeBasket(o){
-  // cherche items dans plusieurs formes possibles
-  try{
-    if(typeof o.panier === 'string') o.panier = JSON.parse(o.panier);
-  }catch(e){}
-  const b = o.basket || o.panier || {};
-  let items = [];
-  if (Array.isArray(b)) items = b;
-  else if (Array.isArray(b.items)) items = b.items;
-  else if (Array.isArray(o.items)) items = o.items;
-  // sécurise
-  if(!Array.isArray(items)) items = [];
-  return items;
-}
-
+/* ===== rendu ===== */
 function render(list){
-  const tb = $('#tb'); tb.innerHTML = '';
-  for(const o of list){
-    const items = normalizeBasket(o);
-    const pizzas = items.map(it => {
-      const sup = it.supplType ? ` (+1€ ${it.supplType})` : '';
-      return `${it.name} × ${it.qty}${sup}`;
-    }).join('<br>');
+  const tb=$("#tb"); tb.innerHTML='';
+  for (const o of list){
+    const tr=document.createElement('tr');
 
-    const tr = document.createElement('tr');
+    const pizzas = (o.basket?.items || o.items || []).map(it=>{
+      const name = it.name || '';
+      const qty  = it.qty || it.quantity || 1;
+      const sup  = (it.supplType||it.sup||'') ? ` (+1€ ${it.supplType||it.sup})` : '';
+      return `${name} × ${qty}${sup}`;
+    }).join('<br>') || '—';
+
+    const st = (o.status||'new');
+    const stClass = st==='ready'?'status-ready':st==='done'?'status-done':st==='canceled'?'status-canceled':'status-new';
+
     tr.innerHTML = `
-      <td>${o.when ? hhmm(o.when) : '—'}</td>
-      <td>${o.id || '—'}</td>
-      <td>${o.name || '—'}</td>
-      <td>${o.phone || '—'}</td>
-      <td>${o.slot ? hhmm(o.slot) : '—'}</td>
-      <td>${pizzas||'—'}</td>
-      <td>${euro(o.total)}</td>
-      <td><span class="status ${o.status||'new'}">${o.status||'new'}</span></td>
-      <td class="actions">
-        <button class="btn small" data-act="ready">Prête</button>
-        <button class="btn small" data-act="done">Terminée</button>
-        <button class="btn small" data-act="canceled">Annuler</button>
-        <button class="btn small red" data-act="delete">Supprimer</button>
-      </td>
+      <td class="time">${fmtTime(o.when, o.slot)}</td>
+      <td>${o.id||'—'}</td>
+      <td>${o.name||o.client||'—'}</td>
+      <td>${o.phone||o.tel||'—'}</td>
+      <td>${(o.slot||'').toString()||'—'}</td>
+      <td>${pizzas}</td>
+      <td>${euro(o.total||0)} €</td>
+      <td><span class="badge ${stClass}">${st}</span></td>
+      <td class="actions"></td>
     `;
-    // actions
-    tr.querySelectorAll('button[data-act]').forEach(b=>{
-      b.onclick = async () => {
-        try{
-          const act = b.getAttribute('data-act');
-          if(act === 'delete'){
-            if(!confirm('Supprimer cette commande ?')) return;
-            await apiPost({action:'delete', id:o.id, adminkey:pref.adminkey});
-          }else{
-            await apiPost({action:'status', id:o.id, status:act, adminkey:pref.adminkey});
-          }
-          await refreshNow(true);
-        }catch(err){ showErr('Action échouée', String(err)); }
-      };
+    const actions=tr.querySelector('.actions');
+    [['ready','Prête'],['done','Terminée'],['canceled','Annuler']].forEach(([code,label])=>{
+      const b=document.createElement('button'); b.className='btn'; b.textContent=label;
+      b.onclick=()=>updateStatus(o.id, code);
+      actions.appendChild(b);
     });
+    const del=document.createElement('button'); del.className='btn red'; del.textContent='Supprimer';
+    del.onclick=()=>deleteOrder(o.id);
+    actions.appendChild(del);
+
     tb.appendChild(tr);
   }
 }
 
-/*** rafraîchissement ***/
-let lastIds=new Set();
-async function refreshNow(manual=false){
-  if(!pref.api){ $('#net').textContent='URL API manquante'; return; }
-  try{
-    $('#net').textContent='Chargement…';
-    const orders = await apiGetList();
-    render(orders);
+/* ===== boucle de rafraîchissement ===== */
+async function fetchOnce(){
+  if(!pref.api){ $("#net").textContent='URL manquante'; $("#net").className='err'; return; }
+  if(polling){ return; }
+  polling=true;
+  $("#net").textContent='Chargement…'; $("#net").className='muted';
 
-    // son si nouvelle(s) commande(s)
-    const ids = new Set(orders.map(o=>o.id));
-    const hasNew = [...ids].some(id => !lastIds.has(id));
-    lastIds = ids;
-    if(hasNew && pref.snd && bell){
-      // jouer seulement si l’utilisateur a déjà interagi
-      try{ await bell.play(); }catch(_){}
-    }
-    $('#net').textContent = new Date().toLocaleTimeString('fr-FR')+' — OK';
+  try{
+    // ping rapide
+    await apiGet(pref.api+'?ping=1');
+
+    // liste du jour
+    const res = await apiGet(pref.api+'?list=1');
+    const orders = Array.isArray(res.orders) ? res.orders : (Array.isArray(res.data)?res.data:[]);
+    // détecte les nouvelles lignes pour jouer la cloche
+    const newOnes = orders.filter(o=> o && o.id && !lastIds.has(o.id));
+    if(newOnes.length){ ring(); }
+    lastIds = new Set(orders.map(o=>o.id));
+
+    render(orders);
+    $("#net").textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' — OK';
+    $("#net").className='ok';
   }catch(err){
-    $('#net').textContent='Erreur réseau';
-    showErr(err.message);
+    $("#net").textContent='Erreur réseau'; $("#net").className='err';
+    console.error(err); showErr(String(err));
+  }finally{
+    polling=false;
   }
 }
+let timer=null;
+function startPolling(){
+  clearInterval(timer);
+  timer = setInterval(fetchOnce, 5000);
+  fetchOnce();
+}
 
-/*** init ***/
+/* ===== actions ===== */
+async function updateStatus(id, status){
+  try{
+    await apiPost(pref.api, {action:'status', id, status, adminkey: pref.adm||''});
+    fetchOnce();
+  }catch(err){ showErr('Action échouée: '+String(err)); }
+}
+async function deleteOrder(id){
+  if(!confirm('Supprimer cette commande ?')) return;
+  try{
+    await apiPost(pref.api, {action:'delete', id, adminkey: pref.adm||''});
+    fetchOnce();
+  }catch(err){ showErr('Suppression impossible: '+String(err)); }
+}
+
+/* ===== init ===== */
 function init(){
-  // UI init
+  // UI ← prefs
   $('#api').value = pref.api||'';
-  $('#adm').value = pref.adminkey||'';
+  $('#adm').value = pref.adm||'';
   $('#snd').checked = !!pref.snd;
-  $('#vol').value = pref.vol ?? .8;
+  $('#vol').value = pref.vol ?? 0.85;
+  bellVol = Number($('#vol').value||'0.8');
+  initBell();
 
-  // events
-  $('#save').onclick = () => {
+  // handlers
+  $('#save').onclick = ()=>{
     pref.api = $('#api').value.trim();
-    pref.adminkey = $('#adm').value.trim();
+    pref.adm = $('#adm').value.trim();
     store.write(pref);
     $('#net').textContent='Paramètres enregistrés';
   };
-  $('#refresh').onclick = () => refreshNow(true);
+  $('#reload').onclick = ()=>fetchOnce();
   $('#snd').onchange = ()=>{ pref.snd = $('#snd').checked; store.write(pref); };
-  $('#vol').oninput  = ()=>{ pref.vol = Number($('#vol').value)||.8; if(bell) bell.volume = pref.vol; store.write(pref); };
+  $('#vol').oninput = ()=>{ bellVol = Number($('#vol').value||'0.8'); pref.vol=bellVol; store.write(pref); };
 
-  // bell
-  bell = new Audio('https://cdn.jsdelivr.net/gh/maphna/tinyfiles@master/chime.mp3');
-  bell.volume = pref.vol ?? .8;
-  // déverrouiller l'audio après 1ère interaction
-  const unlock = ()=>{ if(unlocked) return; bell.play().then(()=>{ unlocked=true; }).catch(()=>{}); window.removeEventListener('click', unlock); };
-  window.addEventListener('click', unlock);
-
-  // premier chargement + polling toutes les 5 s
-  refreshNow(true);
-  setInterval(refreshNow, 5000);
+  startPolling();
 }
 
-/*** sécurité globale ***/
-window.addEventListener('error', e=>showErr(e.message, (e.error&&e.error.stack)||''));
+window.addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
 window.addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
-
-// go!
-init();
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
