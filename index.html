@@ -23,20 +23,16 @@
   .ok{color:var(--green)}
   .err{color:#ff9a9a}
 
-  /* tableau aéré */
   table{width:100%;border-collapse:separate;border-spacing:0 12px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
   tbody tr{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
-  tbody td{
-    background:#0f1623;border:1px solid var(--line);
-    padding:12px 14px;vertical-align:top;line-height:1.35;
-  }
+  tbody td{background:#0f1623;border:1px solid; border-color:var(--line);
+           padding:12px 14px;vertical-align:top;line-height:1.35;}
   tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .actions .btn{padding:6px 10px}
 
-  /* Responsive : cartes */
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
@@ -96,12 +92,12 @@
 </div>
 
 <script>
-/* ====== Anti page blanche ====== */
+/* ===== Anti page blanche ===== */
 function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
 addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
 addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ====== Elements & state ====== */
+/* ===== Elements & state ===== */
 const elApi = document.getElementById('api');
 const elRows = document.getElementById('rows');
 const elStatus = document.getElementById('status');
@@ -122,41 +118,44 @@ let HIDDEN = new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
 let HDC_MAP = new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
 let KNOWN = new Map();   // id -> last object
 
-/* ====== Helpers ====== */
+/* ===== Helpers ===== */
 const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
 const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="ok">'+(t||'OK')+'</span>';
 const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="err">'+(t||'Erreur')+'</span>';
-
-/* Heure FR (Europe/Paris) => "HHhMM" */
-function fmtParisHM(dateOrMs){
-  try{
-    const s = new Intl.DateTimeFormat('fr-FR',
-      {hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Paris'}
-    ).format(dateOrMs instanceof Date ? dateOrMs : new Date(dateOrMs));
-    return s.replace(':','h');
-  }catch{ // fallback
-    const d = (dateOrMs instanceof Date)? dateOrMs : new Date(dateOrMs);
-    const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0');
-    return `${h}h${m}`;
-  }
-}
-
-/* Sécurise le rendu de l'horaire pickup */
-function slotShort(v){
-  if(!v) return '';
-  // "19:30" ou "19h30"
-  if(/^\d{2}[:h]\d{2}$/.test(v)) return v.replace(':','h');
-  // ISO / timestamp -> forcer Europe/Paris
-  const d = new Date(v);
-  if(!isNaN(d)) return fmtParisHM(d);
-  return String(v);
-}
 
 function parseBasket(o){
   let b = o.basket ?? o.items ?? [];
   if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
   return Array.isArray(b) ? b : [];
 }
+function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
+
+/* Horaire (robuste, sans Date) */
+function slotShort(v){
+  if(!v) return '';
+  const s = String(v);
+  // 1) déjà "HH:MM" -> "HHhMM"
+  let m = s.match(/\b(\d{1,2}):(\d{2})\b/);
+  if(m){
+    const H=m[1].padStart(2,'0'), M=m[2];
+    return `${H}h${M}`;
+  }
+  // 2) déjà "HHhMM"
+  m = s.match(/\b(\d{1,2})h(\d{2})\b/i);
+  if(m){
+    const H=m[1].padStart(2,'0'), M=m[2];
+    return `${H}h${M}`;
+  }
+  // 3) fallback : tenter d'extraire deux nombres plausibles dans l'ordre
+  m = s.match(/(\d{1,2}).*?(\d{2})/);
+  if(m){
+    const H = String(Math.min(23, Number(m[1]))).padStart(2,'0');
+    const M = String(Math.min(59, Number(m[2]))).padStart(2,'0');
+    return `${H}h${M}`;
+  }
+  return s; // dernier recours
+}
+
 function inferMsFromId(id){
   if(!id) return NaN;
   const m = String(id).match(/(\d{12,})$/);
@@ -175,7 +174,7 @@ function createdMs(o){
   return t;
 }
 
-/* ====== WebAudio bell (aucun fichier externe) ====== */
+/* ===== WebAudio bell ===== */
 function ensureAudio(){
   if (AUDIO_CTX) return;
   AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
@@ -191,18 +190,14 @@ function ring(){
   env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01);
   env.gain.exponentialRampToValueAtTime(0.0001, t+0.7);
   env.connect(AUDIO_GAIN);
-
   const o1 = AUDIO_CTX.createOscillator(); o1.type='triangle';
   o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25);
   const o2 = AUDIO_CTX.createOscillator(); o2.type='sine';
   o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25);
-
-  o1.connect(env); o2.connect(env);
-  o1.start(t); o2.start(t);
-  o1.stop(t+0.7); o2.stop(t+0.7);
+  o1.connect(env); o2.connect(env); o1.start(t); o2.start(t); o1.stop(t+0.7); o2.stop(t+0.7);
 }
 
-/* ====== Audio UI ====== */
+/* ===== Audio UI ===== */
 function unlockAudio(){
   try{
     ensureAudio(); AUDIO_CTX.resume();
@@ -217,18 +212,12 @@ elVol.addEventListener('input', ()=>{
   if(AUDIO_GAIN) AUDIO_GAIN.gain.value = v;
   localStorage.setItem(LS_VOL, String(v));
 });
-(function initVol(){
-  const v = Number(localStorage.getItem(LS_VOL)||'0.9');
-  elVol.value = String(v);
-})();
+(function initVol(){ const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v); })();
 if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
 
-/* ====== Render ====== */
+/* ===== Render ===== */
 function render(list){
-  // filtre les IDs masqués de façon persistante
   list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
-
-  // tri (plus récentes en haut)
   list.sort((a,b)=> createdMs(b)-createdMs(a));
 
   const prevIds = new Set(KNOWN.keys());
@@ -245,7 +234,7 @@ function render(list){
     tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
     tr.appendChild(td('Client', o.name||o.client||'' ));
     tr.appendChild(td('Téléphone', o.phone||'' ));
-    tr.appendChild(td('HDC', fmtParisHM(ms).replace('h',':') )); /* HDC = heure de commande — HH:MM */
+    tr.appendChild(td('HDC', hhmm(new Date(ms)) ));
     tr.appendChild(td('Horaire', slotShort(o.slot||o.horaire||'')));
 
     const pizzas = parseBasket(o).map(it=>{
@@ -255,9 +244,9 @@ function render(list){
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    /* NOUVELLE COLONNE COMMENTAIRE */
-    const comment = (o.note ?? o.comment ?? o.remarque ?? o.msg ?? '').toString().trim();
-    tr.appendChild(td('Commentaire', comment ? comment.replace(/\n/g,'<br>') : '—'));
+    // >>>> NOUVEAU : Commentaire (note/comment/commentaire)
+    const note = (o.note ?? o.comment ?? o.commentaire ?? '').toString().trim();
+    tr.appendChild(td('Commentaire', note || '—'));
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
@@ -275,12 +264,11 @@ function render(list){
     elRows.appendChild(tr);
   });
 
-  // son si au moins une nouvelle ID
   const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
   if(newOnes.length>0) ring();
 }
 
-/* ====== API ====== */
+/* ===== API ===== */
 async function fetchOrders(){
   const url = (elApi.value||'').trim();
   if(!url){ err('Renseigne l’URL de l’API'); return []; }
@@ -298,7 +286,7 @@ async function refresh(){
   }catch(e){ console.error(e); err('Erreur réseau'); }
 }
 
-/* ====== Hooks & init ====== */
+/* ===== Hooks & init ===== */
 document.getElementById('save').onclick = ()=>{
   localStorage.setItem(LS_API, elApi.value.trim());
   localStorage.setItem(LS_VOL, String(elVol.value||'0.9'));
