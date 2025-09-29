@@ -26,7 +26,7 @@
   table{width:100%;border-collapse:separate;border-spacing:0 12px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
   tbody tr{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
-  tbody td{background:#0f1623;border:1px solid; border-color:var(--line);
+  tbody td{background:#0f1623;border:1px solid var(--line);
            padding:12px 14px;vertical-align:top;line-height:1.35;}
   tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
@@ -38,7 +38,7 @@
     thead{display:none}
     tbody tr{margin:14px 0}
     tbody td{border-radius:12px;margin:6px 0;padding:10px 12px}
-    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+    tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:#c8d3f0;margin-bottom:4px}
     .actions{justify-content:flex-start}
   }
 
@@ -49,7 +49,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Dashboard — PIZZ’AMIGO</h1>
+  <h1>Dashboard — PIZZ’AMIGO <span class="muted" style="font-size:.9rem">v5</span></h1>
 
   <div class="panel">
     <div class="row">
@@ -128,34 +128,22 @@ function parseBasket(o){
   if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
   return Array.isArray(b) ? b : [];
 }
-function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
 
-/* Horaire (robuste, sans Date) */
+/* HORAIRE — extraction texte -> HHhMM, aucune Date() */
 function slotShort(v){
   if(!v) return '';
   const s = String(v);
-  // 1) déjà "HH:MM" -> "HHhMM"
   let m = s.match(/\b(\d{1,2}):(\d{2})\b/);
-  if(m){
-    const H=m[1].padStart(2,'0'), M=m[2];
-    return `${H}h${M}`;
-  }
-  // 2) déjà "HHhMM"
+  if(m) return `${m[1].padStart(2,'0')}h${m[2]}`;
   m = s.match(/\b(\d{1,2})h(\d{2})\b/i);
-  if(m){
-    const H=m[1].padStart(2,'0'), M=m[2];
-    return `${H}h${M}`;
-  }
-  // 3) fallback : tenter d'extraire deux nombres plausibles dans l'ordre
+  if(m) return `${m[1].padStart(2,'0')}h${m[2]}`;
   m = s.match(/(\d{1,2}).*?(\d{2})/);
-  if(m){
-    const H = String(Math.min(23, Number(m[1]))).padStart(2,'0');
-    const M = String(Math.min(59, Number(m[2]))).padStart(2,'0');
-    return `${H}h${M}`;
-  }
-  return s; // dernier recours
+  if(m) return `${String(Math.min(23,+m[1])).padStart(2,'0')}h${String(Math.min(59,+m[2])).padStart(2,'0')}`;
+  return s;
 }
 
+/* HDC — heure de commande (ms) */
+function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
 function inferMsFromId(id){
   if(!id) return NaN;
   const m = String(id).match(/(\d{12,})$/);
@@ -168,7 +156,7 @@ function createdMs(o){
   if(Number.isNaN(t)) t = inferMsFromId(o.id||o.ID||o.code);
   if(Number.isNaN(t)){
     if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
-    t = Date.now(); // dernier recours
+    t = Date.now();
   }
   if(!HDC_MAP.has(o.id)) { HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
   return t;
@@ -244,8 +232,8 @@ function render(list){
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    // >>>> NOUVEAU : Commentaire (note/comment/commentaire)
-    const note = (o.note ?? o.comment ?? o.commentaire ?? '').toString().trim();
+    /* COMMENTAIRE — on lit toutes les variantes possibles */
+    const note = (o.note ?? o.comment ?? o.commentaire ?? o.Commentaire ?? o.message ?? o.msg ?? o.remarks ?? o.remarques ?? o.remark ?? '').toString().trim();
     tr.appendChild(td('Commentaire', note || '—'));
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
@@ -253,8 +241,7 @@ function render(list){
     const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
     const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
     x.onclick = ()=>{
-      const realId = id;
-      HIDDEN.add(realId);
+      HIDDEN.add(id);
       localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN)));
       tr.remove();
     };
@@ -272,7 +259,8 @@ function render(list){
 async function fetchOrders(){
   const url = (elApi.value||'').trim();
   if(!url){ err('Renseigne l’URL de l’API'); return []; }
-  const r = await fetch(url+'?list=1', {cache:'no-store'});
+  // Ajout d'un paramètre horodaté pour contourner tout cache côté Apps Script/proxy
+  const r = await fetch(url+'?list=1&nocache='+Date.now(), {cache:'no-store'});
   const data = await r.json();
   if(data && data.ok===false) throw new Error(data.error||'Réponse invalide');
   const arr = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
