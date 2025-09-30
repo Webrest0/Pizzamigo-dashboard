@@ -5,14 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{
-    --bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6;
-    --green:#1fcf7c; --red:#e55252; --white:#fff; --accent:#ffb54c;
-  }
+  :root{--bg:#0b0f14;--panel:#101722;--line:#283149;--muted:#b8c2d6;--green:#1fcf7c;--red:#e55252;--white:#fff;--accent:#ffb54c;}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
   .wrap{max-width:1024px;margin:18px auto;padding:0 14px}
-
   h1{margin:0 0 12px;font-size:24px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -20,19 +16,15 @@
   .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
   .muted{color:var(--muted)}
-  .ok{color:var(--green)}
-  .err{color:#ff9a9a}
-
+  .ok{color:var(--green)} .err{color:#ff9a9a}
   table{width:100%;border-collapse:separate;border-spacing:0 12px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
   tbody tr{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
-  tbody td{background:#0f1623;border:1px solid var(--line);
-           padding:12px 14px;vertical-align:top;line-height:1.35;}
+  tbody td{background:#0f1623;border:1px solid var(--line);padding:12px 14px;vertical-align:top;line-height:1.35;}
   tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .actions .btn{padding:6px 10px}
-
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
@@ -41,7 +33,6 @@
     tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:#c8d3f0;margin-bottom:4px}
     .actions{justify-content:flex-start}
   }
-
   .sound{margin-left:auto;display:flex;align-items:center;gap:10px}
   .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623}
   .vol{width:160px}
@@ -49,7 +40,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Dashboard — PIZZ’AMIGO <span class="muted" style="font-size:.9rem">v5</span></h1>
+  <h1>Dashboard — PIZZ’AMIGO <span class="muted" style="font-size:.9rem">v6</span></h1>
 
   <div class="panel">
     <div class="row">
@@ -92,132 +83,92 @@
 </div>
 
 <script>
-/* ===== Anti page blanche ===== */
 function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
 addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
 addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ===== Elements & state ===== */
-const elApi = document.getElementById('api');
-const elRows = document.getElementById('rows');
-const elStatus = document.getElementById('status');
-const elVol = document.getElementById('vol');
-const btnEnable = document.getElementById('audio-enable');
-const btnTest = document.getElementById('audio-test');
+const elApi=document.getElementById('api'), elRows=document.getElementById('rows'), elStatus=document.getElementById('status'),
+      elVol=document.getElementById('vol'), btnEnable=document.getElementById('audio-enable'), btnTest=document.getElementById('audio-test');
 
-let AUDIO_CTX = null, AUDIO_GAIN = null, AUDIO_UNLOCKED = false;
+let AUDIO_CTX=null, AUDIO_GAIN=null, AUDIO_UNLOCKED=false;
+const LS_API='pizz_api', LS_VOL='pizz_vol', LS_AUDIO='pizz_audio', LS_HIDDEN='pizz_hidden', LS_HDC='pizz_hdc';
 
-/* persistences */
-const LS_API = 'pizz_api';
-const LS_VOL = 'pizz_vol';
-const LS_AUDIO = 'pizz_audio';
-const LS_HIDDEN = 'pizz_hidden';
-const LS_HDC = 'pizz_hdc';  // { id : ms }
+let HIDDEN=new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
+let HDC_MAP=new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
+let KNOWN=new Map();
 
-let HIDDEN = new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
-let HDC_MAP = new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
-let KNOWN = new Map();   // id -> last object
+const euro=v=>(Number(v)||0).toFixed(2).replace('.',',');
+const ok=t=>elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="ok">'+(t||'OK')+'</span>';
+const err=t=>elStatus.innerHTML=new Date().toLocaleTimeString('fr-FR')+' — <span class="err">'+(t||'Erreur')+'</span>';
 
-/* ===== Helpers ===== */
-const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
-const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="ok">'+(t||'OK')+'</span>';
-const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="err">'+(t||'Erreur')+'</span>';
+function parseBasket(o){let b=o.basket??o.items??[]; if(typeof b==='string'){try{b=JSON.parse(b)}catch{b=[]}} return Array.isArray(b)?b:[];}
 
-function parseBasket(o){
-  let b = o.basket ?? o.items ?? [];
-  if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
-  return Array.isArray(b) ? b : [];
-}
-
-/* HORAIRE — extraction texte -> HHhMM, aucune Date() */
+/* Horaire (retrait) — extraction texte => HHhMM */
 function slotShort(v){
   if(!v) return '';
-  const s = String(v);
-  let m = s.match(/\b(\d{1,2}):(\d{2})\b/);
-  if(m) return `${m[1].padStart(2,'0')}h${m[2]}`;
-  m = s.match(/\b(\d{1,2})h(\d{2})\b/i);
-  if(m) return `${m[1].padStart(2,'0')}h${m[2]}`;
-  m = s.match(/(\d{1,2}).*?(\d{2})/);
-  if(m) return `${String(Math.min(23,+m[1])).padStart(2,'0')}h${String(Math.min(59,+m[2])).padStart(2,'0')}`;
+  const s=String(v);
+  let m=s.match(/\b(\d{1,2}):(\d{2})\b/); if(m) return `${m[1].padStart(2,'0')}h${m[2]}`;
+  m=s.match(/\b(\d{1,2})h(\d{2})\b/i);   if(m) return `${m[1].padStart(2,'0')}h${m[2]}`;
+  m=s.match(/(\d{1,2}).*?(\d{2})/);      if(m) return `${String(Math.min(23,+m[1])).padStart(2,'0')}h${String(Math.min(59,+m[2])).padStart(2,'0')}`;
   return s;
 }
 
-/* HDC — heure de commande (ms) */
-function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
-function inferMsFromId(id){
-  if(!id) return NaN;
-  const m = String(id).match(/(\d{12,})$/);
-  if(m){ const n = Number(m[1]); if(!Number.isNaN(n)) return n; }
-  return NaN;
-}
+/* HDC (heure de commande) */
+function hhmm(d){const h=String(d.getHours()).padStart(2,'0'),m=String(d.getMinutes()).padStart(2,'0');return `${h}:${m}`;}
+function inferMsFromId(id){if(!id) return NaN; const m=String(id).match(/(\d{12,})$/); if(m){const n=Number(m[1]); if(!Number.isNaN(n)) return n;} return NaN;}
 function createdMs(o){
-  const raw = o.created ?? o.date ?? o.when ?? o.ts ?? o.time ?? o.timestamp;
-  let t = Number.isFinite(Date.parse(raw||'')) ? Date.parse(raw) : NaN;
-  if(Number.isNaN(t)) t = inferMsFromId(o.id||o.ID||o.code);
-  if(Number.isNaN(t)){
-    if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
-    t = Date.now();
-  }
-  if(!HDC_MAP.has(o.id)) { HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
+  const raw=o.created??o.date??o.when??o.ts??o.time??o.timestamp;
+  let t=Number.isFinite(Date.parse(raw||''))?Date.parse(raw):NaN;
+  if(Number.isNaN(t)) t=inferMsFromId(o.id||o.ID||o.code);
+  if(Number.isNaN(t)){ if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id); t=Date.now(); }
+  if(!HDC_MAP.has(o.id)){ HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
   return t;
 }
 
-/* ===== WebAudio bell ===== */
-function ensureAudio(){
-  if (AUDIO_CTX) return;
-  AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
-  AUDIO_GAIN = AUDIO_CTX.createGain();
-  AUDIO_GAIN.gain.value = Number(localStorage.getItem(LS_VOL)||'0.9');
-  AUDIO_GAIN.connect(AUDIO_CTX.destination);
-}
-function ring(){
-  if(!AUDIO_UNLOCKED) return;
-  ensureAudio();
-  const t = AUDIO_CTX.currentTime;
-  const env = AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t);
-  env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01);
-  env.gain.exponentialRampToValueAtTime(0.0001, t+0.7);
-  env.connect(AUDIO_GAIN);
-  const o1 = AUDIO_CTX.createOscillator(); o1.type='triangle';
-  o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25);
-  const o2 = AUDIO_CTX.createOscillator(); o2.type='sine';
-  o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25);
-  o1.connect(env); o2.connect(env); o1.start(t); o2.start(t); o1.stop(t+0.7); o2.stop(t+0.7);
+/* ======= COMMENTAIRE : couvre un max de clés ======= */
+const COMMENT_KEYS=['note','notes','comment','comments','commentaire','Commentaire','commentaires','message','msg','remarque','remarques','remarks','instruction','instructions','customer_note','customerNotes','customer_notes','ck_note','ck-note','extra','options'];
+function pickComment(o){
+  for(const k of COMMENT_KEYS){ if(o[k]!=null && String(o[k]).trim()) return String(o[k]).trim(); }
+  // toute clé qui contient "comment" / "note" / "remarq"
+  for(const [k,v] of Object.entries(o)){
+    if(/comment|remarq|note/i.test(k) && v!=null && String(v).trim()) return String(v).trim();
+  }
+  // parfois l’objet brut est dans payload/raw
+  try{
+    const raw=o.payload||o.raw||o.data_raw||o.original||null;
+    if(raw){
+      const obj = typeof raw==='string' ? JSON.parse(raw) : raw;
+      const found = pickComment(obj);
+      if(found) return found;
+    }
+  }catch(_){}
+  return '';
 }
 
-/* ===== Audio UI ===== */
-function unlockAudio(){
-  try{
-    ensureAudio(); AUDIO_CTX.resume();
-    AUDIO_UNLOCKED = true; btnEnable.style.display='none';
-    localStorage.setItem(LS_AUDIO,'1');
-  }catch(_){}
-}
+/* ====== Son ====== */
+function ensureAudio(){ if(AUDIO_CTX) return; AUDIO_CTX=new (window.AudioContext||window.webkitAudioContext)(); AUDIO_GAIN=AUDIO_CTX.createGain(); AUDIO_GAIN.gain.value=Number(localStorage.getItem(LS_VOL)||'0.9'); AUDIO_GAIN.connect(AUDIO_CTX.destination); }
+function ring(){ if(!AUDIO_UNLOCKED) return; ensureAudio(); const t=AUDIO_CTX.currentTime; const env=AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t); env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9),t+0.01); env.gain.exponentialRampToValueAtTime(0.0001,t+0.7); env.connect(AUDIO_GAIN); const o1=AUDIO_CTX.createOscillator(); o1.type='triangle'; o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25); const o2=AUDIO_CTX.createOscillator(); o2.type='sine'; o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25); o1.connect(env); o2.connect(env); o1.start(t); o2.start(t); o1.stop(t+0.7); o2.stop(t+0.7); }
+function unlockAudio(){ try{ ensureAudio(); AUDIO_CTX.resume(); AUDIO_UNLOCKED=true; btnEnable.style.display='none'; localStorage.setItem(LS_AUDIO,'1'); }catch(_){}} 
 btnEnable.addEventListener('click', unlockAudio);
 btnTest.addEventListener('click', ()=>{ unlockAudio(); ring(); });
-elVol.addEventListener('input', ()=>{
-  const v = Number(elVol.value||'0.9');
-  if(AUDIO_GAIN) AUDIO_GAIN.gain.value = v;
-  localStorage.setItem(LS_VOL, String(v));
-});
-(function initVol(){ const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v); })();
+elVol.addEventListener('input', ()=>{ const v=Number(elVol.value||'0.9'); if(AUDIO_GAIN) AUDIO_GAIN.gain.value=v; localStorage.setItem(LS_VOL,String(v)); });
+(function(){ const v=Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value=String(v); })();
 if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
 
-/* ===== Render ===== */
+/* ====== Rendu ====== */
 function render(list){
   list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
   list.sort((a,b)=> createdMs(b)-createdMs(a));
-
-  const prevIds = new Set(KNOWN.keys());
-  elRows.innerHTML = '';
+  const prevIds=new Set(KNOWN.keys());
+  elRows.innerHTML='';
 
   list.forEach((o,idx)=>{
-    const id = o.id || o.ID || o.code; if(!id) return;
+    const id=o.id||o.ID||o.code; if(!id) return;
     KNOWN.set(id,o);
+    const ms=createdMs(o);
 
-    const ms = createdMs(o);
-    const tr = document.createElement('tr');
-    const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
+    const tr=document.createElement('tr');
+    const td=(label,html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
 
     tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
     tr.appendChild(td('Client', o.name||o.client||'' ));
@@ -226,68 +177,45 @@ function render(list){
     tr.appendChild(td('Horaire', slotShort(o.slot||o.horaire||'')));
 
     const pizzas = parseBasket(o).map(it=>{
-      const supVal = (it.supplPrice ?? it.suppl ?? 0);
-      const sup = supVal ? ` (+${supVal}€ ${it.supplType||'suppl.'})` : '';
+      const supVal=(it.supplPrice ?? it.suppl ?? 0);
+      const sup=supVal ? ` (+${supVal}€ ${it.supplType||'suppl.'})` : '';
       return `${it.name||''} × ${it.qty||1}${sup}`;
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    /* COMMENTAIRE — on lit toutes les variantes possibles */
-    const note = (o.note ?? o.comment ?? o.commentaire ?? o.Commentaire ?? o.message ?? o.msg ?? o.remarks ?? o.remarques ?? o.remark ?? '').toString().trim();
+    const note = pickComment(o);
     tr.appendChild(td('Commentaire', note || '—'));
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
-    const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
-    x.onclick = ()=>{
-      HIDDEN.add(id);
-      localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN)));
-      tr.remove();
-    };
-    act.appendChild(x);
-    tr.appendChild(act);
+    const act=document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
+    const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
+    x.onclick=()=>{ HIDDEN.add(id); localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN))); tr.remove(); };
+    act.appendChild(x); tr.appendChild(act);
 
     elRows.appendChild(tr);
   });
 
-  const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
+  const newOnes=list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
   if(newOnes.length>0) ring();
 }
 
-/* ===== API ===== */
+/* ====== API ====== */
 async function fetchOrders(){
-  const url = (elApi.value||'').trim();
+  const url=(elApi.value||'').trim();
   if(!url){ err('Renseigne l’URL de l’API'); return []; }
-  // Ajout d'un paramètre horodaté pour contourner tout cache côté Apps Script/proxy
-  const r = await fetch(url+'?list=1&nocache='+Date.now(), {cache:'no-store'});
-  const data = await r.json();
+  const r=await fetch(url+'?list=1&nocache='+Date.now(), {cache:'no-store'});
+  const data=await r.json();
   if(data && data.ok===false) throw new Error(data.error||'Réponse invalide');
-  const arr = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
+  const arr=Array.isArray(data?.orders)?data.orders:(Array.isArray(data?.data)?data.data:[]);
   return arr;
 }
-async function refresh(){
-  try{
-    const list = await fetchOrders();
-    render(list);
-    ok('OK');
-  }catch(e){ console.error(e); err('Erreur réseau'); }
-}
+async function refresh(){ try{ const list=await fetchOrders(); render(list); ok('OK'); }catch(e){ console.error(e); err('Erreur réseau'); } }
 
-/* ===== Hooks & init ===== */
-document.getElementById('save').onclick = ()=>{
-  localStorage.setItem(LS_API, elApi.value.trim());
-  localStorage.setItem(LS_VOL, String(elVol.value||'0.9'));
-  ok('Paramètres enregistrés');
-};
-document.getElementById('refresh').onclick = refresh;
-
-(function boot(){
-  elApi.value = localStorage.getItem(LS_API) || elApi.value;
-  const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v);
-  refresh();
-  setInterval(refresh, 10000);
-})();
+/* ====== Hooks & init ====== */
+document.getElementById('save').onclick=()=>{ localStorage.setItem(LS_API, elApi.value.trim()); localStorage.setItem(LS_VOL, String(elVol.value||'0.9')); ok('Paramètres enregistrés'); };
+document.getElementById('refresh').onclick=refresh;
+(function boot(){ elApi.value=localStorage.getItem(LS_API)||elApi.value; const v=Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value=String(v); refresh(); setInterval(refresh,10000); })();
 </script>
 </body>
 </html>
