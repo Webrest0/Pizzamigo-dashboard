@@ -57,7 +57,7 @@
 
   <div class="panel">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbx-ElTwEIquUXFDoVX6E1M_vnW48hFWBo2ZdeWw6TK797Fx9-GHBfnwhJny424e_QNTAw/exec">
+      <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
       <div class="sound">
@@ -80,7 +80,7 @@
           <th style="width:78px">HDC</th>
           <th style="width:86px">Horaire</th>
           <th>Pizzas</th>
-          <th>Commentaire</th><!-- ✅ colonne commentaire -->
+          <th style="width:160px">Commentaire</th>
           <th style="width:90px">Total</th>
           <th style="width:80px">Action</th>
         </tr>
@@ -140,7 +140,7 @@ function slotShort(v){
 }
 function inferMsFromId(id){
   if(!id) return NaN;
-  const m = String(id).match(/(\d{12,})$/); // prend la fin numérique (style 1759061880580)
+  const m = String(id).match(/(\d{12,})$/);
   if(m){ const n = Number(m[1]); if(!Number.isNaN(n)) return n; }
   return NaN;
 }
@@ -150,13 +150,13 @@ function createdMs(o){
   if(Number.isNaN(t)) t = inferMsFromId(o.id||o.ID||o.code);
   if(Number.isNaN(t)){
     if(HDC_MAP.has(o.id)) return HDC_MAP.get(o.id);
-    t = Date.now(); // dernier recours
+    t = Date.now();
   }
   if(!HDC_MAP.has(o.id)) { HDC_MAP.set(o.id,t); localStorage.setItem(LS_HDC, JSON.stringify(Object.fromEntries(HDC_MAP))); }
   return t;
 }
 
-/* ====== WebAudio bell (aucun fichier externe) ====== */
+/* ====== WebAudio bell ====== */
 function ensureAudio(){
   if (AUDIO_CTX) return;
   AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
@@ -206,10 +206,7 @@ if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
 
 /* ====== Render ====== */
 function render(list){
-  // filtre les IDs masqués de façon persistante
   list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
-
-  // tri (plus récentes en haut)
   list.sort((a,b)=> createdMs(b)-createdMs(a));
 
   const prevIds = new Set(KNOWN.keys());
@@ -223,29 +220,26 @@ function render(list){
     const tr = document.createElement('tr');
     const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
 
-    // # = index humain + code en infobulle
     tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
     tr.appendChild(td('Client', o.name||o.client||'' ));
     tr.appendChild(td('Téléphone', o.phone||'' ));
     tr.appendChild(td('HDC', hhmm(new Date(ms)) ));
     tr.appendChild(td('Horaire', slotShort(o.slot||o.horaire||'')));
 
-    // Pizzas
     const pizzas = parseBasket(o).map(it=>{
       const supVal = (it.supplPrice ?? it.suppl ?? 0);
-      const supType = (it.supplType || (supVal? 'suppl.' : '')).toString();
-      const sup = supVal ? ` (+${supVal}€ ${supType})` : '';
+      const supTxt = it.supplType || it.suppl_name || it.supplTypeName || 'suppl.';
+      const sup = supVal ? ` (+${supVal}€ ${supTxt})` : '';
       return `${it.name||''} × ${it.qty||1}${sup}`;
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    // ✅ Commentaire — on lit plusieurs clés possibles (note/comment/remark/comments)
-    const comment = (o.note ?? o.comment ?? o.remark ?? o.comments ?? '').toString().trim() || '—';
-    tr.appendChild(td('Commentaire', comment));
+    /* >>>>>>>>>> NOUVEAU : commentaire (multi-clés) */
+    const comment = String((o.note ?? o.comment ?? o.comments ?? o.remark ?? o.message ?? '') || '').trim();
+    tr.appendChild(td('Commentaire', comment || '—'));
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
-    // Action (suppression locale définitive)
     const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
     const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
     x.onclick = ()=>{
@@ -259,7 +253,6 @@ function render(list){
     elRows.appendChild(tr);
   });
 
-  // son si au moins une nouvelle ID
   const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
   if(newOnes.length>0) ring();
 }
