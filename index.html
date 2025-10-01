@@ -80,7 +80,7 @@
           <th style="width:78px">HDC</th>
           <th style="width:86px">Horaire</th>
           <th>Pizzas</th>
-          <th style="width:160px">Commentaire</th>
+          <th>Commentaire</th>
           <th style="width:90px">Total</th>
           <th style="width:80px">Action</th>
         </tr>
@@ -228,14 +228,13 @@ function render(list){
 
     const pizzas = parseBasket(o).map(it=>{
       const supVal = (it.supplPrice ?? it.suppl ?? 0);
-      const supTxt = it.supplType || it.suppl_name || it.supplTypeName || 'suppl.';
-      const sup = supVal ? ` (+${supVal}€ ${supTxt})` : '';
+      const sup = supVal ? ` (+${supVal}€ ${it.supplType||'suppl.'})` : '';
       return `${it.name||''} × ${it.qty||1}${sup}`;
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    /* >>>>>>>>>> NOUVEAU : commentaire (multi-clés) */
-    const comment = String((o.note ?? o.comment ?? o.comments ?? o.remark ?? o.message ?? '') || '').trim();
+    /* >>>>>>>>>> NOUVEAU : colonne Commentaire (prend plusieurs clés possibles) */
+    const comment = (o.note ?? o.comment ?? o.commentaire ?? o.message ?? '').toString().trim();
     tr.appendChild(td('Commentaire', comment || '—'));
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
