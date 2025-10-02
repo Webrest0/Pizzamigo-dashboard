@@ -5,38 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard — PIZZ’AMIGO</title>
 <style>
-  :root{
-    --bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6;
-    --green:#1fcf7c; --red:#e55252; --white:#fff; --accent:#ffb54c;
-  }
+  :root{--bg:#0b0f14; --panel:#101722; --line:#283149; --muted:#b8c2d6; --green:#1fcf7c; --red:#e55252; --white:#fff; --accent:#ffb54c;}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial}
   .wrap{max-width:1024px;margin:18px auto;padding:0 14px}
-
   h1{margin:0 0 12px;font-size:24px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   input[type="text"]{width:100%;max-width:680px;border:1px solid var(--line);background:#0e1420;color:#fff;border-radius:10px;padding:10px}
   .btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
   .btn.red{border-color:#ff8b8b;color:#ffb4b4}
-  .muted{color:var(--muted)}
-  .ok{color:var(--green)}
-  .err{color:#ff9a9a}
-
-  /* tableau aéré */
+  .muted{color:var(--muted)} .ok{color:var(--green)} .err{color:#ff9a9a}
   table{width:100%;border-collapse:separate;border-spacing:0 12px}
   thead th{padding:10px;text-align:left;color:#dfe8ff}
   tbody tr{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
-  tbody td{
-    background:#0f1623;border:1px solid var(--line);
-    padding:12px 14px;vertical-align:top;line-height:1.35;
-  }
+  tbody td{background:#0f1623;border:1px solid var(--line);padding:12px 14px;vertical-align:top;line-height:1.35;}
   tbody td:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
   tbody td:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .actions .btn{padding:6px 10px}
-
-  /* Responsive : cartes */
   @media (max-width: 720px){
     table, thead, tbody, th, td, tr{display:block}
     thead{display:none}
@@ -45,7 +32,6 @@
     tbody td::before{content:attr(data-label);display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
     .actions{justify-content:flex-start}
   }
-
   .sound{margin-left:auto;display:flex;align-items:center;gap:10px}
   .pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0f1623}
   .vol{width:160px}
@@ -57,7 +43,7 @@
 
   <div class="panel">
     <div class="row">
-      <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbyePXcqPFPs0uhNOcVM5J5Nq3LCgsrB9UKVOmit1HVoTBzCdZRDCxEntrydbXSyQMXu/exec">
+      <input id="api" type="text" placeholder="URL de l’API" value="https://script.google.com/macros/s/AKfycbx-ElTwEIquUXFDoVX6E1M_vnW48hFWBo2ZdeWw6TK797Fx9-GHBfnwhJny424e_QNTAw/exec">
       <button id="save" class="btn">Enregistrer</button>
       <button id="refresh" class="btn">Actualiser</button>
       <div class="sound">
@@ -96,12 +82,11 @@
 </div>
 
 <script>
-/* ====== Anti page blanche ====== */
+/* Anti page blanche */
 function showErr(msg){const p=document.getElementById('err');p.style.display='block';document.getElementById('err-msg').textContent=msg;}
 addEventListener('error', e=>showErr(e.message+'\n'+(e.error&&e.error.stack||'')));
 addEventListener('unhandledrejection', e=>showErr('Promise rejetée: '+(e.reason&&e.reason.message||e.reason)));
 
-/* ====== Elements & state ====== */
 const elApi = document.getElementById('api');
 const elRows = document.getElementById('rows');
 const elStatus = document.getElementById('status');
@@ -111,32 +96,32 @@ const btnTest = document.getElementById('audio-test');
 
 let AUDIO_CTX = null, AUDIO_GAIN = null, AUDIO_UNLOCKED = false;
 
-/* persistences */
-const LS_API = 'pizz_api';
-const LS_VOL = 'pizz_vol';
-const LS_AUDIO = 'pizz_audio';
-const LS_HIDDEN = 'pizz_hidden';
-const LS_HDC = 'pizz_hdc';  // { id : ms }
-
+/* Persistences */
+const LS_API='pizz_api', LS_VOL='pizz_vol', LS_AUDIO='pizz_audio', LS_HIDDEN='pizz_hidden', LS_HDC='pizz_hdc';
 let HIDDEN = new Set(JSON.parse(localStorage.getItem(LS_HIDDEN)||'[]'));
 let HDC_MAP = new Map(Object.entries(JSON.parse(localStorage.getItem(LS_HDC)||'{}')).map(([k,v])=>[k,Number(v)]));
-let KNOWN = new Map();   // id -> last object
+let KNOWN = new Map();
 
-/* ====== Helpers ====== */
+/* Helpers */
 const euro = v => (Number(v)||0).toFixed(2).replace('.',',');
-const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="ok">'+(t||'OK')+'</span>';
-const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR') + ' — <span class="err">'+(t||'Erreur')+'</span>';
+const ok = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR')+' — <span class="ok">'+(t||'OK')+'</span>';
+const err = t => elStatus.innerHTML = new Date().toLocaleTimeString('fr-FR')+' — <span class="err">'+(t||'Erreur')+'</span>';
 
 function parseBasket(o){
   let b = o.basket ?? o.items ?? [];
   if (typeof b === 'string'){ try{ b = JSON.parse(b); }catch{ b = []; } }
   return Array.isArray(b) ? b : [];
 }
-function hhmm(d){ const h=String(d.getHours()).padStart(2,'0'), m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m}`; }
+function hhmmParis(ms){
+  try{
+    return new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Paris'}).format(new Date(ms));
+  }catch{ const d=new Date(ms); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+}
 function slotShort(v){
   if(!v) return '';
   if(/^\d{2}:\d{2}$/.test(v)) return v.replace(':','h');
-  const d=new Date(v); return `${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`;
+  const d=new Date(v);
+  return `${new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Paris'}).format(d).replace(':','h')}`;
 }
 function inferMsFromId(id){
   if(!id) return NaN;
@@ -156,74 +141,44 @@ function createdMs(o){
   return t;
 }
 
-/* ====== WebAudio bell ====== */
-function ensureAudio(){
-  if (AUDIO_CTX) return;
-  AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)();
-  AUDIO_GAIN = AUDIO_CTX.createGain();
-  AUDIO_GAIN.gain.value = Number(localStorage.getItem(LS_VOL)||'0.9');
-  AUDIO_GAIN.connect(AUDIO_CTX.destination);
-}
+/* WebAudio bell */
+function ensureAudio(){ if(AUDIO_CTX) return; AUDIO_CTX = new (window.AudioContext||window.webkitAudioContext)(); AUDIO_GAIN=AUDIO_CTX.createGain(); AUDIO_GAIN.gain.value=Number(localStorage.getItem(LS_VOL)||'0.9'); AUDIO_GAIN.connect(AUDIO_CTX.destination); }
 function ring(){
   if(!AUDIO_UNLOCKED) return;
   ensureAudio();
-  const t = AUDIO_CTX.currentTime;
-  const env = AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t);
-  env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01);
-  env.gain.exponentialRampToValueAtTime(0.0001, t+0.7);
-  env.connect(AUDIO_GAIN);
-
-  const o1 = AUDIO_CTX.createOscillator(); o1.type='triangle';
-  o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25);
-  const o2 = AUDIO_CTX.createOscillator(); o2.type='sine';
-  o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25);
-
-  o1.connect(env); o2.connect(env);
-  o1.start(t); o2.start(t);
-  o1.stop(t+0.7); o2.stop(t+0.7);
+  const t=AUDIO_CTX.currentTime;
+  const env=AUDIO_CTX.createGain(); env.gain.setValueAtTime(0.0001,t); env.gain.exponentialRampToValueAtTime((Number(elVol.value)||0.9), t+0.01); env.gain.exponentialRampToValueAtTime(0.0001,t+0.7); env.connect(AUDIO_GAIN);
+  const o1=AUDIO_CTX.createOscillator(); o1.type='triangle'; o1.frequency.setValueAtTime(1200,t); o1.frequency.exponentialRampToValueAtTime(700,t+0.25);
+  const o2=AUDIO_CTX.createOscillator(); o2.type='sine'; o2.frequency.setValueAtTime(1800,t); o2.frequency.exponentialRampToValueAtTime(1100,t+0.25);
+  o1.connect(env); o2.connect(env); o1.start(t); o2.start(t); o1.stop(t+0.7); o2.stop(t+0.7);
 }
 
-/* ====== Audio UI ====== */
-function unlockAudio(){
-  try{
-    ensureAudio(); AUDIO_CTX.resume();
-    AUDIO_UNLOCKED = true; btnEnable.style.display='none';
-    localStorage.setItem(LS_AUDIO,'1');
-  }catch(_){}
-}
+/* Audio UI */
+function unlockAudio(){ try{ ensureAudio(); AUDIO_CTX.resume(); AUDIO_UNLOCKED=true; btnEnable.style.display='none'; localStorage.setItem(LS_AUDIO,'1'); }catch{} }
 btnEnable.addEventListener('click', unlockAudio);
 btnTest.addEventListener('click', ()=>{ unlockAudio(); ring(); });
-elVol.addEventListener('input', ()=>{
-  const v = Number(elVol.value||'0.9');
-  if(AUDIO_GAIN) AUDIO_GAIN.gain.value = v;
-  localStorage.setItem(LS_VOL, String(v));
-});
-(function initVol(){
-  const v = Number(localStorage.getItem(LS_VOL)||'0.9');
-  elVol.value = String(v);
-})();
-if(localStorage.getItem(LS_AUDIO)==='1'){ setTimeout(unlockAudio,0); }
+elVol.addEventListener('input', ()=>{ const v=Number(elVol.value||'0.9'); if(AUDIO_GAIN) AUDIO_GAIN.gain.value=v; localStorage.setItem(LS_VOL, String(v)); });
+(function(){ const v=Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value=String(v); if(localStorage.getItem(LS_AUDIO)==='1') setTimeout(unlockAudio,0); })();
 
-/* ====== Render ====== */
+/* Render */
 function render(list){
   list = list.filter(o=>!HIDDEN.has(o.id||o.ID||o.code));
   list.sort((a,b)=> createdMs(b)-createdMs(a));
-
-  const prevIds = new Set(KNOWN.keys());
-  elRows.innerHTML = '';
+  const prev = new Set(KNOWN.keys());
+  elRows.innerHTML='';
 
   list.forEach((o,idx)=>{
-    const id = o.id || o.ID || o.code; if(!id) return;
+    const id=o.id||o.ID||o.code; if(!id) return;
     KNOWN.set(id,o);
+    const ms=createdMs(o);
 
-    const ms = createdMs(o);
-    const tr = document.createElement('tr');
-    const td = (label, html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
+    const td=(label,html)=>{const c=document.createElement('td'); c.setAttribute('data-label',label); c.innerHTML=html; return c;};
+    const tr=document.createElement('tr');
 
     tr.appendChild(td('#', `<span title="${id}">${idx+1}</span>`));
     tr.appendChild(td('Client', o.name||o.client||'' ));
     tr.appendChild(td('Téléphone', o.phone||'' ));
-    tr.appendChild(td('HDC', hhmm(new Date(ms)) ));
+    tr.appendChild(td('HDC', hhmmParis(ms) ));
     tr.appendChild(td('Horaire', slotShort(o.slot||o.horaire||'')));
 
     const pizzas = parseBasket(o).map(it=>{
@@ -233,58 +188,42 @@ function render(list){
     }).join('<br>');
     tr.appendChild(td('Pizzas', pizzas || (o.pizzas||'')));
 
-    /* >>>>>>>>>> NOUVEAU : colonne Commentaire (prend plusieurs clés possibles) */
-    const comment = (o.note ?? o.comment ?? o.commentaire ?? o.message ?? '').toString().trim();
-    tr.appendChild(td('Commentaire', comment || '—'));
+    const comment = (o.note ?? o.comment ?? o.comments ?? '').toString().trim() || '—';
+    tr.appendChild(td('Commentaire', comment));
 
     tr.appendChild(td('Total', `${euro(o.total||o.amount||0)} €`));
 
-    const act = document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
-    const x = document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
-    x.onclick = ()=>{
-      HIDDEN.add(id);
-      localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN)));
-      tr.remove();
-    };
-    act.appendChild(x);
-    tr.appendChild(act);
+    const act=document.createElement('td'); act.className='actions'; act.setAttribute('data-label','Action');
+    const x=document.createElement('button'); x.className='btn red'; x.textContent='✖'; x.title='Retirer définitivement';
+    x.onclick=()=>{ HIDDEN.add(id); localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(HIDDEN))); tr.remove(); };
+    act.appendChild(x); tr.appendChild(act);
 
     elRows.appendChild(tr);
   });
 
-  const newOnes = list.filter(o=>!prevIds.has(o.id||o.ID||o.code));
+  const newOnes = list.filter(o=>!prev.has(o.id||o.ID||o.code));
   if(newOnes.length>0) ring();
 }
 
-/* ====== API ====== */
+/* API */
 async function fetchOrders(){
-  const url = (elApi.value||'').trim();
+  const url=(elApi.value||'').trim();
   if(!url){ err('Renseigne l’URL de l’API'); return []; }
-  const r = await fetch(url+'?list=1', {cache:'no-store'});
-  const data = await r.json();
+  const r=await fetch(url+'?list=1',{cache:'no-store'});
+  const data=await r.json();
   if(data && data.ok===false) throw new Error(data.error||'Réponse invalide');
   const arr = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.data) ? data.data : []);
   return arr;
 }
-async function refresh(){
-  try{
-    const list = await fetchOrders();
-    render(list);
-    ok('OK');
-  }catch(e){ console.error(e); err('Erreur réseau'); }
-}
+async function refresh(){ try{ const list=await fetchOrders(); render(list); ok('OK'); }catch(e){ console.error(e); err('Erreur réseau'); }}
 
-/* ====== Hooks & init ====== */
-document.getElementById('save').onclick = ()=>{
-  localStorage.setItem(LS_API, elApi.value.trim());
-  localStorage.setItem(LS_VOL, String(elVol.value||'0.9'));
-  ok('Paramètres enregistrés');
-};
-document.getElementById('refresh').onclick = refresh;
+/* Hooks & init */
+document.getElementById('save').onclick=()=>{ localStorage.setItem(LS_API, elApi.value.trim()); localStorage.setItem(LS_VOL, String(elVol.value||'0.9')); ok('Paramètres enregistrés'); };
+document.getElementById('refresh').onclick=refresh;
 
 (function boot(){
   elApi.value = localStorage.getItem(LS_API) || elApi.value;
-  const v = Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value = String(v);
+  const v=Number(localStorage.getItem(LS_VOL)||'0.9'); elVol.value=String(v);
   refresh();
   setInterval(refresh, 10000);
 })();
